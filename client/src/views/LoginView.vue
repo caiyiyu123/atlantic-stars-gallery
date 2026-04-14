@@ -128,4 +128,11 @@ async function handleLogin() {
   font-size: 16px;
   height: 44px;
 }
+
+@media (max-width: 768px) {
+  .login-card {
+    width: 90%;
+    padding: 32px 24px;
+  }
+}
 </style>

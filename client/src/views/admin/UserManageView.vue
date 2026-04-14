@@ -6,8 +6,7 @@
     </div>
 
     <el-table :data="users" v-loading="loading" style="width: 100%;">
-      <el-table-column prop="username" label="用户名" width="160" />
-      <el-table-column prop="display_name" label="显示名" width="160" />
+      <el-table-column prop="username" label="用户名" width="200" />
       <el-table-column label="角色" width="120">
         <template #default="{ row }">
           <el-tag :type="row.role === 'admin' ? '' : 'success'" size="small" round>
@@ -39,9 +38,6 @@
         <el-form-item label="密码" v-if="!editingId">
           <el-input v-model="form.password" type="password" placeholder="初始密码" show-password />
         </el-form-item>
-        <el-form-item label="显示名">
-          <el-input v-model="form.display_name" placeholder="显示名称" />
-        </el-form-item>
         <el-form-item label="角色">
           <el-select v-model="form.role" style="width: 100%;">
             <el-option label="管理员" value="admin" />
@@ -56,7 +52,7 @@
     </el-dialog>
 
     <el-dialog v-model="resetPwdVisible" title="重置密码" width="380px">
-      <p style="margin-bottom: 12px;">重置 <strong>{{ resetUser?.display_name }}</strong> 的密码</p>
+      <p style="margin-bottom: 12px;">重置 <strong>{{ resetUser?.username }}</strong> 的密码</p>
       <el-input v-model="newPassword" type="password" placeholder="输入新密码" show-password />
       <template #footer>
         <el-button @click="resetPwdVisible = false">取消</el-button>
@@ -80,7 +76,7 @@ const loading = ref(false);
 const dialogVisible = ref(false);
 const editingId = ref(null);
 const saving = ref(false);
-const form = ref({ username: '', password: '', display_name: '', role: 'viewer' });
+const form = ref({ username: '', password: '', role: 'viewer' });
 
 const resetPwdVisible = ref(false);
 const resetUser = ref(null);
@@ -99,10 +95,10 @@ async function fetchUsers() {
 function openDialog(row = null) {
   if (row) {
     editingId.value = row.id;
-    form.value = { username: row.username, password: '', display_name: row.display_name, role: row.role };
+    form.value = { username: row.username, password: '', role: row.role };
   } else {
     editingId.value = null;
-    form.value = { username: '', password: '', display_name: '', role: 'viewer' };
+    form.value = { username: '', password: '', role: 'viewer' };
   }
   dialogVisible.value = true;
 }
@@ -111,7 +107,7 @@ async function handleSave() {
   saving.value = true;
   try {
     if (editingId.value) {
-      await updateUser(editingId.value, { role: form.value.role, display_name: form.value.display_name });
+      await updateUser(editingId.value, { role: form.value.role });
       ElMessage.success('更新成功');
     } else {
       await createUser(form.value);
@@ -125,7 +121,7 @@ async function handleSave() {
 }
 
 async function handleDelete(row) {
-  await ElMessageBox.confirm(`确定删除用户 ${row.display_name}？`, '确认删除', { type: 'warning' });
+  await ElMessageBox.confirm(`确定删除用户 ${row.username}？`, '确认删除', { type: 'warning' });
   await deleteUser(row.id);
   ElMessage.success('删除成功');
   fetchUsers();

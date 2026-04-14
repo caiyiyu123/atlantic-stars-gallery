@@ -261,4 +261,29 @@ onMounted(async () => {
 .filter-search :deep(.el-input__wrapper) {
   border-radius: 16px;
 }
+
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+    gap: 0;
+    padding: 12px 0;
+  }
+
+  .filter-section {
+    padding: 10px 14px;
+  }
+
+  .filter-section + .filter-section {
+    border-left: none;
+    border-top: 1px solid var(--color-border, #e8e8ed);
+  }
+
+  .filter-section:nth-child(2) {
+    flex: 1;
+  }
+
+  .chip-list-season .chip-season {
+    width: calc(33.33% - 4px);
+  }
+}
 </style>

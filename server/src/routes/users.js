@@ -21,18 +21,18 @@ router.get('/', auth, admin, async (req, res, next) => {
 // POST /api/users
 router.post('/', auth, admin, async (req, res, next) => {
   try {
-    const { username, password, role, display_name } = req.body;
-    if (!username || !password || !display_name) {
+    const { username, password, role } = req.body;
+    if (!username || !password) {
       return res.status(400).json({ message: '请填写完整信息' });
     }
 
     const hash = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
       'INSERT INTO users (username, password_hash, role, display_name) VALUES (?, ?, ?, ?)',
-      [username, hash, role || 'viewer', display_name]
+      [username, hash, role || 'viewer', username]
     );
 
-    res.status(201).json({ id: result.insertId, username, role: role || 'viewer', display_name });
+    res.status(201).json({ id: result.insertId, username, role: role || 'viewer', display_name: username });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ message: '用户名已存在' });

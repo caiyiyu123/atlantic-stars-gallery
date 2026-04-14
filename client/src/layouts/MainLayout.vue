@@ -22,4 +22,10 @@ import AppNav from '../components/AppNav.vue';
 .main-content {
   min-height: calc(100vh - 100px);
 }
+
+@media (max-width: 768px) {
+  .main-layout {
+    padding: 10px 12px;
+  }
+}
 </style>

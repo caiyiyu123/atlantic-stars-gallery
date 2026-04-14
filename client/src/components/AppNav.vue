@@ -196,4 +196,31 @@ function handleLogout() {
 .dropdown-logout {
   color: #e53e3e;
 }
+
+@media (max-width: 768px) {
+  .app-nav {
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .nav-left {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .nav-logo-img {
+    height: 36px;
+  }
+
+  .nav-link {
+    font-size: 13px;
+    min-width: auto;
+    padding: 6px 12px;
+  }
+
+  .nav-username {
+    display: none;
+  }
+}
 </style>
