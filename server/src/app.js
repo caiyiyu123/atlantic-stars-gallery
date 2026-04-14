@@ -19,6 +19,8 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/seasons', require('./routes/seasons'));
+app.use('/api/series', require('./routes/series'));
 
 // Error handler
 app.use((err, req, res, next) => {
