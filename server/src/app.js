@@ -17,7 +17,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Routes will be added here
+// Routes
+app.use('/api/auth', require('./routes/auth'));
 
 // Error handler
 app.use((err, req, res, next) => {

@@ -1,0 +1,83 @@
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const pool = require('../config/db');
+const config = require('../config/env');
+const auth = require('../middleware/auth');
+
+const router = express.Router();
+
+// POST /api/auth/login
+router.post('/login', async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ message: '请输入用户名和密码' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT id, username, password_hash, role, display_name FROM users WHERE username = ?',
+      [username]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ message: '用户名或密码错误' });
+    }
+
+    const user = rows[0];
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({ message: '用户名或密码错误' });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role: user.role },
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        displayName: user.display_name,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/change-password
+router.post('/change-password', auth, async (req, res, next) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ message: '请输入旧密码和新密码' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT password_hash FROM users WHERE id = ?',
+      [req.user.id]
+    );
+
+    const valid = await bcrypt.compare(oldPassword, rows[0].password_hash);
+    if (!valid) {
+      return res.status(400).json({ message: '旧密码错误' });
+    }
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.execute(
+      'UPDATE users SET password_hash = ? WHERE id = ?',
+      [hash, req.user.id]
+    );
+
+    res.json({ message: '密码修改成功' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+module.exports = router;
