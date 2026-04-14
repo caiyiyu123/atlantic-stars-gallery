@@ -1,31 +1,35 @@
 <template>
   <header class="app-nav">
-    <div class="nav-left">
+    <div class="nav-logo-row">
       <router-link to="/" class="nav-logo">
         <img src="@/assets/logo.png" alt="Atlantic Stars" class="nav-logo-img" />
       </router-link>
-      <router-link to="/" class="nav-link nav-link-yellow" :class="{ active: route.name === 'ProductList' }">
-        产品图库
-      </router-link>
-      <router-link v-if="auth.isAdmin" to="/admin/products" class="nav-link nav-link-orange" :class="{ active: route.name === 'ProductManage' }">
-        产品管理
-      </router-link>
-      <router-link v-if="auth.isAdmin" to="/admin/series" class="nav-link nav-link-red" :class="{ active: route.name === 'SeriesManage' }">
-        系列管理
-      </router-link>
     </div>
-    <div class="nav-right">
-      <span class="nav-username">{{ auth.user?.displayName }}</span>
-      <div class="nav-avatar-wrapper" @click="showDropdown = !showDropdown" v-click-outside="() => showDropdown = false">
-        <div class="nav-avatar">
-          {{ auth.user?.displayName?.charAt(0) }}
-        </div>
-        <div v-if="showDropdown" class="nav-dropdown">
-          <router-link v-if="auth.isAdmin" to="/admin/users" class="dropdown-item" @click="showDropdown = false">
-            用户管理
-          </router-link>
-          <div class="dropdown-item dropdown-logout" @click="handleLogout">
-            退出登录
+    <div class="nav-bar-row">
+      <div class="nav-left">
+        <router-link to="/" class="nav-link nav-link-yellow" :class="{ active: route.name === 'ProductList' }">
+          产品图库
+        </router-link>
+        <router-link v-if="auth.isAdmin" to="/admin/products" class="nav-link nav-link-orange" :class="{ active: route.name === 'ProductManage' }">
+          产品管理
+        </router-link>
+        <router-link v-if="auth.isAdmin" to="/admin/series" class="nav-link nav-link-red" :class="{ active: route.name === 'SeriesManage' }">
+          系列管理
+        </router-link>
+      </div>
+      <div class="nav-right">
+        <span class="nav-username">{{ auth.user?.displayName }}</span>
+        <div class="nav-avatar-wrapper" @click="showDropdown = !showDropdown" v-click-outside="() => showDropdown = false">
+          <div class="nav-avatar">
+            {{ auth.user?.displayName?.charAt(0) }}
+          </div>
+          <div v-if="showDropdown" class="nav-dropdown">
+            <router-link v-if="auth.isAdmin" to="/admin/users" class="dropdown-item" @click="showDropdown = false">
+              用户管理
+            </router-link>
+            <div class="dropdown-item dropdown-logout" @click="handleLogout">
+              退出登录
+            </div>
           </div>
         </div>
       </div>
@@ -65,8 +69,7 @@ function handleLogout() {
 <style scoped>
 .app-nav {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   padding: 14px 28px;
   background: rgba(251, 251, 253, 0.72);
   backdrop-filter: saturate(180%) blur(20px);
@@ -79,10 +82,22 @@ function handleLogout() {
   z-index: 100;
 }
 
+.nav-logo-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.nav-bar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .nav-left {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 12px;
 }
 
 .nav-logo {
@@ -199,14 +214,11 @@ function handleLogout() {
 
 @media (max-width: 768px) {
   .app-nav {
-    flex-wrap: wrap;
     padding: 10px 14px;
-    gap: 10px;
   }
 
-  .nav-left {
-    gap: 8px;
-    flex-wrap: wrap;
+  .nav-logo-row {
+    margin-bottom: 8px;
   }
 
   .nav-logo-img {
@@ -219,8 +231,18 @@ function handleLogout() {
     padding: 6px 12px;
   }
 
+  .nav-left {
+    gap: 8px;
+  }
+
   .nav-username {
     display: none;
+  }
+
+  .nav-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
   }
 }
 </style>
