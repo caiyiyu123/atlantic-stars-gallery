@@ -22,6 +22,8 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/seasons', require('./routes/seasons'));
 app.use('/api/series', require('./routes/series'));
 app.use('/api/products', require('./routes/products'));
+app.use('/api/images', require('./routes/images'));
+app.use('/api/users', require('./routes/users'));
 
 // Error handler
 app.use((err, req, res, next) => {
