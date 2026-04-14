@@ -50,7 +50,8 @@ router.post('/upload', auth, admin, upload.array('files', 20), async (req, res, 
     for (const file of req.files) {
       sortOrder++;
       const relativePath = `uploads/${product_id}/${file.filename}`;
-      const originalUrl = `http://localhost:${config.port}/${relativePath}`;
+      const baseUrl = config.baseUrl || `http://localhost:${config.port}`;
+      const originalUrl = `${baseUrl}/${relativePath}`;
       const thumbnailUrl = originalUrl;
 
       const [result] = await pool.query(
@@ -208,19 +209,23 @@ router.post('/download', auth, async (req, res, next) => {
       return res.status(404).json({ message: '没有可下载的图片' });
     }
 
-    const zipService = require('../services/zipService');
-    const files = images.map(img => {
-      const ext = img.cos_key.split('.').pop();
-      return {
-        key: img.cos_key,
-        name: `${img.sku}/${img.sort_order}.${ext}`,
-      };
-    });
+    const archiver = require('archiver');
+    const archive = archiver('zip', { zlib: { level: 5 } });
 
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', 'attachment; filename=atlantic-stars-images.zip');
 
-    await zipService.createZipStream(files, res);
+    archive.pipe(res);
+
+    for (const img of images) {
+      const localPath = path.join(__dirname, '../../', img.cos_key);
+      if (fs.existsSync(localPath)) {
+        const ext = img.cos_key.split('.').pop();
+        archive.file(localPath, { name: `${img.sku}/${img.sort_order}.${ext}` });
+      }
+    }
+
+    await archive.finalize();
   } catch (err) {
     next(err);
   }
