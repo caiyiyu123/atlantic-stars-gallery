@@ -34,9 +34,11 @@ app.use('/api/users', require('./routes/users'));
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(err.status || 500).json({
-    message: err.message || 'Internal Server Error',
-  });
+  const status = err.status || 500;
+  const message = status === 500 && config.nodeEnv !== 'development'
+    ? '服务器内部错误'
+    : (err.message || 'Internal Server Error');
+  res.status(status).json({ message });
 });
 
 app.listen(config.port, () => {

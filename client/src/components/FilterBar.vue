@@ -36,8 +36,8 @@
           >
             {{ s.name }}
           </button>
-          <button v-if="availableSeries.length > defaultShow && !seriesExpanded" class="filter-chip chip-expand" @click="seriesExpanded = true">
-            展开 ({{ availableSeries.length - defaultShow }})
+          <button v-if="availableSeries.length > seriesDefaultShow && !seriesExpanded" class="filter-chip chip-expand" @click="seriesExpanded = true">
+            展开 ({{ availableSeries.length - seriesDefaultShow }})
           </button>
           <button v-if="seriesExpanded" class="filter-chip chip-expand" @click="seriesExpanded = false">
             收起

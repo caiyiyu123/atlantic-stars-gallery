@@ -5,10 +5,18 @@ const pool = require('../config/db');
 const config = require('../config/env');
 const auth = require('../middleware/auth');
 
+const rateLimit = require('express-rate-limit');
+
 const router = express.Router();
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: '登录尝试过多，请15分钟后再试' },
+});
+
 // POST /api/auth/login
-router.post('/login', async (req, res, next) => {
+router.post('/login', loginLimiter, async (req, res, next) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {

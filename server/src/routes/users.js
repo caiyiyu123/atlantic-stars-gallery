@@ -25,6 +25,13 @@ router.post('/', auth, admin, async (req, res, next) => {
     if (!username || !password) {
       return res.status(400).json({ message: '请填写完整信息' });
     }
+    if (password.length < 6) {
+      return res.status(400).json({ message: '密码至少6位' });
+    }
+    const validRoles = ['admin', 'viewer'];
+    if (role && !validRoles.includes(role)) {
+      return res.status(400).json({ message: '无效的角色' });
+    }
 
     const hash = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
@@ -59,8 +66,8 @@ router.put('/:id', auth, admin, async (req, res, next) => {
 router.post('/:id/reset-password', auth, admin, async (req, res, next) => {
   try {
     const { newPassword } = req.body;
-    if (!newPassword) {
-      return res.status(400).json({ message: '请输入新密码' });
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: '密码至少6位' });
     }
 
     const hash = await bcrypt.hash(newPassword, 10);

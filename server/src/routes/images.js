@@ -8,11 +8,21 @@ const admin = require('../middleware/admin');
 const config = require('../config/env');
 
 const router = express.Router();
+const uploadsDir = path.resolve(__dirname, '../../uploads');
+
+// 安全路径校验
+function safePath(base, rel) {
+  const full = path.resolve(base, rel);
+  if (!full.startsWith(base)) return null;
+  return full;
+}
 
 // multer 配置 - 本地存储
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../../uploads', req.body.product_id || 'temp');
+    const pid = req.body.product_id;
+    if (!pid || !/^\d+$/.test(pid)) return cb(new Error('Invalid product_id'));
+    const dir = path.join(uploadsDir, pid);
     fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
@@ -167,8 +177,8 @@ router.delete('/:id', auth, admin, async (req, res, next) => {
     }
 
     // 尝试删除本地文件
-    const localPath = path.join(__dirname, '../../', rows[0].cos_key);
-    if (fs.existsSync(localPath)) {
+    const localPath = safePath(uploadsDir, path.relative('uploads', rows[0].cos_key));
+    if (localPath && fs.existsSync(localPath)) {
       fs.unlinkSync(localPath);
     } else {
       // 尝试COS删除
@@ -194,6 +204,9 @@ router.post('/download', auth, async (req, res, next) => {
     if (!Array.isArray(product_ids) || product_ids.length === 0) {
       return res.status(400).json({ message: '请选择要下载的产品' });
     }
+    if (product_ids.length > 50) {
+      return res.status(400).json({ message: '单次最多下载50个产品' });
+    }
 
     const placeholders = product_ids.map(() => '?').join(',');
     const [images] = await pool.query(
@@ -217,10 +230,9 @@ router.post('/download', auth, async (req, res, next) => {
 
     archive.pipe(res);
 
-    const serverRoot = path.join(__dirname, '../..');
     for (const img of images) {
-      const localPath = path.join(serverRoot, img.cos_key);
-      if (fs.existsSync(localPath)) {
+      const localPath = safePath(uploadsDir, path.relative('uploads', img.cos_key));
+      if (localPath && fs.existsSync(localPath)) {
         const ext = img.cos_key.split('.').pop();
         archive.file(localPath, { name: `${img.sku}/${img.sort_order}.${ext}` });
       }

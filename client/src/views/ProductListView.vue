@@ -88,8 +88,11 @@
               </div>
             </div>
             <div class="detail-actions">
-              <el-button type="primary" @click="handleDetailDownload" :loading="detailDownloading">
-                下载全部图片
+              <el-button type="primary" @click="downloadSingleImage(detailCurrentImage, detailIndex)">
+                下载当前图片
+              </el-button>
+              <el-button @click="handleDetailDownload" :loading="detailDownloading" v-if="detailProduct.images?.length > 1">
+                下载全部
               </el-button>
             </div>
           </div>
@@ -153,18 +156,36 @@ function openViewer(url) {
   viewerVisible.value = true;
 }
 
-async function handleDetailDownload() {
-  detailDownloading.value = true;
+async function downloadSingleImage(img, index) {
   try {
-    const blob = await downloadImages([detailProduct.value.id]);
+    const response = await fetch(img.original_url);
+    const blob = await response.blob();
+    const ext = img.original_url.split('.').pop();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${detailProduct.value.sku}-images.zip`;
+    a.download = `${detailProduct.value.sku}-${index + 1}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
-  } catch (err) {}
-  finally { detailDownloading.value = false; }
+  } catch (err) {
+    ElMessage.error('下载失败');
+  }
+}
+
+async function handleDetailDownload() {
+  const images = detailProduct.value?.images;
+  if (!images || images.length === 0) return;
+  detailDownloading.value = true;
+  try {
+    for (let i = 0; i < images.length; i++) {
+      await downloadSingleImage(images[i], i);
+      if (i < images.length - 1) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+  } finally {
+    detailDownloading.value = false;
+  }
 }
 
 async function fetchProducts(page = 1) {
