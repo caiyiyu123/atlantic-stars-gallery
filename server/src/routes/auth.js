@@ -15,7 +15,7 @@ router.post('/login', async (req, res, next) => {
       return res.status(400).json({ message: '请输入用户名和密码' });
     }
 
-    const [rows] = await pool.execute(
+    const [rows] = await pool.query(
       'SELECT id, username, password_hash, role, display_name FROM users WHERE username = ?',
       [username]
     );
@@ -58,7 +58,7 @@ router.post('/change-password', auth, async (req, res, next) => {
       return res.status(400).json({ message: '请输入旧密码和新密码' });
     }
 
-    const [rows] = await pool.execute(
+    const [rows] = await pool.query(
       'SELECT password_hash FROM users WHERE id = ?',
       [req.user.id]
     );
@@ -69,7 +69,7 @@ router.post('/change-password', auth, async (req, res, next) => {
     }
 
     const hash = await bcrypt.hash(newPassword, 10);
-    await pool.execute(
+    await pool.query(
       'UPDATE users SET password_hash = ? WHERE id = ?',
       [hash, req.user.id]
     );

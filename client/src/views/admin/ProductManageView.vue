@@ -6,17 +6,32 @@
     </div>
 
     <div class="admin-filter">
-      <el-select v-model="filterSeason" placeholder="选择季度" clearable style="width: 160px;" @change="fetchList">
+      <el-select v-model="filterSeason" placeholder="选择季度" clearable style="width: 160px;" @change="onFilterSeasonChange">
         <el-option v-for="s in seasons" :key="s.id" :label="s.name" :value="s.id" />
+      </el-select>
+      <el-select v-model="filterSeriesId" placeholder="选择系列" clearable style="width: 160px;" @change="() => fetchList(1)">
+        <el-option v-for="s in filterSeriesOptions" :key="s.id" :label="s.name" :value="s.id" />
       </el-select>
       <el-input v-model="filterKeyword" placeholder="搜索款号..." clearable style="width: 200px;" @input="debouncedFetch" />
     </div>
 
     <el-table :data="products" v-loading="loading" style="width: 100%;">
+      <el-table-column label="缩略图" width="70" align="center">
+        <template #default="{ row }">
+          <img v-if="row.cover_image" :src="row.cover_image" class="table-thumb" />
+        </template>
+      </el-table-column>
       <el-table-column prop="sku" label="款号" width="180" />
-      <el-table-column prop="color_name" label="颜色" width="150" />
-      <el-table-column prop="series_name" label="系列" width="130" />
-      <el-table-column prop="season_name" label="季度" width="110" />
+      <el-table-column prop="series_name" label="系列" width="120" />
+      <el-table-column prop="season_name" label="季度" width="100" />
+      <el-table-column label="类别" width="80">
+        <template #default="{ row }">
+          {{ { men: 'Men', women: 'Women', kids: 'Kids' }[row.category] || row.category }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="color_name" label="颜色" width="120" />
+      <el-table-column prop="material" label="材质" width="140" />
+      <el-table-column prop="size_range" label="尺码" width="100" />
       <el-table-column prop="image_count" label="图片" width="80" align="center" />
       <el-table-column label="操作" width="260">
         <template #default="{ row }">
@@ -107,8 +122,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { getProducts, createProduct, updateProduct, deleteProduct } from '../../api/products';
 import { getSeasons } from '../../api/seasons';
 import { getSeries } from '../../api/series';
-import { getUploadToken, registerImage } from '../../api/images';
-import COS from 'cos-js-sdk-v5';
+import { uploadLocalImages } from '../../api/images';
 
 const products = ref([]);
 const seasons = ref([]);
@@ -117,6 +131,7 @@ const loading = ref(false);
 const page = ref(1);
 const total = ref(0);
 const filterSeason = ref(null);
+const filterSeriesId = ref(null);
 const filterKeyword = ref('');
 
 const dialogVisible = ref(false);
@@ -128,6 +143,11 @@ const uploadVisible = ref(false);
 const uploadProduct = ref(null);
 const fileList = ref([]);
 const uploading = ref(false);
+
+const filterSeriesOptions = computed(() => {
+  if (!filterSeason.value) return seriesList.value;
+  return seriesList.value.filter(s => s.season_id === filterSeason.value);
+});
 
 const filteredSeries = computed(() => {
   return seriesList.value.filter(s =>
@@ -145,6 +165,7 @@ async function fetchList(p = 1) {
       const season = seasons.value.find(s => s.id === filterSeason.value);
       if (season) { params.year = season.year; params.season = season.season; }
     }
+    if (filterSeriesId.value) params.series_id = filterSeriesId.value;
     if (filterKeyword.value) params.keyword = filterKeyword.value;
 
     const res = await getProducts(params);
@@ -213,45 +234,8 @@ async function handleUpload() {
   uploading.value = true;
   try {
     const product = uploadProduct.value;
-    const prefix = `products/${product.sku}/`;
-    const cred = await getUploadToken(prefix);
-
-    const cos = new COS({
-      getAuthorization: (options, callback) => {
-        callback({
-          TmpSecretId: cred.credentials.tmpSecretId,
-          TmpSecretKey: cred.credentials.tmpSecretKey,
-          SecurityToken: cred.credentials.sessionToken,
-          StartTime: cred.startTime,
-          ExpiredTime: cred.expiredTime,
-        });
-      },
-    });
-
-    for (const file of fileList.value) {
-      const ext = file.name.split('.').pop();
-      const key = `${prefix}${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-
-      await new Promise((resolve, reject) => {
-        cos.putObject({
-          Bucket: cred.bucket,
-          Region: cred.region,
-          Key: key,
-          Body: file.raw,
-        }, (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-
-      await registerImage({
-        product_id: product.id,
-        cos_key: key,
-        file_size: file.raw.size,
-      });
-    }
-
-    ElMessage.success(`${fileList.value.length} 张图片上传成功`);
+    const res = await uploadLocalImages(product.id, fileList.value);
+    ElMessage.success(`${res.uploaded} 张图片上传成功`);
     uploadVisible.value = false;
     fetchList(page.value);
   } catch (err) {
@@ -261,6 +245,10 @@ async function handleUpload() {
   }
 }
 
+function onFilterSeasonChange() {
+  filterSeriesId.value = null;
+  fetchList(1);
+}
 function onSeasonChange() { form.value.series_id = null; }
 function onCategoryChange() { form.value.series_id = null; }
 
@@ -318,5 +306,14 @@ onMounted(() => {
   font-size: 12px;
   margin-top: 4px;
   color: var(--color-text-tertiary);
+}
+
+.table-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+  margin: 0 auto;
 }
 </style>

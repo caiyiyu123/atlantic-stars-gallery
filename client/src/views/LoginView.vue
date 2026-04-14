@@ -1,8 +1,7 @@
 <template>
   <div class="login-page">
     <div class="login-card">
-      <div class="login-logo">★</div>
-      <h1 class="login-brand">Atlantic Stars</h1>
+      <img src="@/assets/logo.png" alt="Atlantic Stars" class="login-logo-img" />
       <p class="login-subtitle">产品图片库</p>
 
       <el-form
@@ -105,25 +104,11 @@ async function handleLogin() {
   text-align: center;
 }
 
-.login-logo {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
+.login-logo-img {
+  height: 60px;
+  width: auto;
   margin: 0 auto 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  color: var(--color-text);
-}
-
-.login-brand {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  margin-bottom: 4px;
+  display: block;
 }
 
 .login-subtitle {

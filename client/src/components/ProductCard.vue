@@ -1,7 +1,7 @@
 <template>
   <div
     class="product-card"
-    @click="$router.push(`/product/${product.id}`)"
+    @click="$emit('view', product.id)"
   >
     <div class="card-checkbox" v-if="selectable" @click.stop>
       <el-checkbox
@@ -19,10 +19,14 @@
       <span v-else class="card-img-placeholder">暂无图片</span>
     </div>
     <div class="card-info">
-      <div class="card-sku">{{ product.sku }}</div>
-      <div class="card-color">{{ product.color_name }}</div>
-      <div class="card-meta">
-        {{ product.series_name }} · {{ product.season_name }} · {{ categoryLabel }}
+      <div class="card-top-row">
+        <span class="card-sku">{{ product.sku }}</span>
+        <span class="card-color" v-if="product.color_name">{{ product.color_name }}</span>
+      </div>
+      <div class="card-tags">
+        <span class="tag tag-season">{{ product.season_name }}</span>
+        <span class="tag tag-series">{{ product.series_name }}</span>
+        <span class="tag tag-category">{{ categoryLabel }}</span>
       </div>
     </div>
   </div>
@@ -37,7 +41,7 @@ const props = defineProps({
   selected: { type: Boolean, default: false },
 });
 
-defineEmits(['select']);
+defineEmits(['select', 'view']);
 
 const categoryLabels = { men: 'Men', women: 'Women', kids: 'Kids' };
 const categoryLabel = computed(() => categoryLabels[props.product.category] || props.product.category);
@@ -71,7 +75,7 @@ const categoryLabel = computed(() => categoryLabels[props.product.category] || p
 
 .card-img {
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 4 / 3;
   background: var(--color-bg-tertiary);
   display: flex;
   align-items: center;
@@ -91,24 +95,55 @@ const categoryLabel = computed(() => categoryLabels[props.product.category] || p
 }
 
 .card-info {
-  padding: 14px 16px;
+  padding: 10px 12px;
+}
+
+.card-top-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
 .card-sku {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1d1d1f;
   letter-spacing: -0.01em;
-  margin-bottom: 4px;
 }
 
 .card-color {
   font-size: 12px;
-  color: #6e6e73;
+  color: #86868b;
+  flex-shrink: 0;
 }
 
-.card-meta {
-  font-size: 11px;
-  color: var(--color-text-tertiary);
-  margin-top: 6px;
+.card-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.tag-season {
+  background: #CF2028;
+  color: #fff;
+}
+
+.tag-series {
+  background: #EE7624;
+  color: #fff;
+}
+
+.tag-category {
+  background: #F5D726;
+  color: #1d1d1f;
 }
 </style>

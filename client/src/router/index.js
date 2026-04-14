@@ -23,15 +23,16 @@ const routes = [
         name: 'ProductDetail',
         component: () => import('../views/ProductDetailView.vue'),
       },
-      {
-        path: 'compare',
-        name: 'ProductCompare',
-        component: () => import('../views/ProductCompareView.vue'),
-      },
-      {
+{
         path: 'admin/products',
         name: 'ProductManage',
         component: () => import('../views/admin/ProductManageView.vue'),
+        meta: { requiresAdmin: true },
+      },
+      {
+        path: 'admin/series',
+        name: 'SeriesManage',
+        component: () => import('../views/admin/SeriesManageView.vue'),
         meta: { requiresAdmin: true },
       },
       {

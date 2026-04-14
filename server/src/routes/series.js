@@ -21,7 +21,7 @@ router.get('/', auth, async (req, res, next) => {
     }
 
     sql += ' ORDER BY se.year DESC, s.name';
-    const [rows] = await pool.execute(sql, params);
+    const [rows] = await pool.query(sql, params);
     res.json(rows);
   } catch (err) {
     next(err);
@@ -36,7 +36,7 @@ router.post('/', auth, admin, async (req, res, next) => {
       return res.status(400).json({ message: '请填写完整信息' });
     }
 
-    const [result] = await pool.execute(
+    const [result] = await pool.query(
       'INSERT INTO series (season_id, category, name, description) VALUES (?, ?, ?, ?)',
       [season_id, category, name, description || null]
     );
@@ -50,7 +50,7 @@ router.post('/', auth, admin, async (req, res, next) => {
 router.put('/:id', auth, admin, async (req, res, next) => {
   try {
     const { name, description, category } = req.body;
-    await pool.execute(
+    await pool.query(
       'UPDATE series SET name = COALESCE(?, name), description = COALESCE(?, description), category = COALESCE(?, category) WHERE id = ?',
       [name || null, description || null, category || null, req.params.id]
     );
@@ -63,7 +63,7 @@ router.put('/:id', auth, admin, async (req, res, next) => {
 // DELETE /api/series/:id
 router.delete('/:id', auth, admin, async (req, res, next) => {
   try {
-    await pool.execute('DELETE FROM series WHERE id = ?', [req.params.id]);
+    await pool.query('DELETE FROM series WHERE id = ?', [req.params.id]);
     res.json({ message: '删除成功' });
   } catch (err) {
     next(err);

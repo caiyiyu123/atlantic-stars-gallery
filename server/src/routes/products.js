@@ -41,7 +41,7 @@ router.get('/', auth, async (req, res, next) => {
       JOIN series sr ON p.series_id = sr.id
       JOIN seasons se ON sr.season_id = se.id
       ${where}`;
-    const [countRows] = await pool.execute(countSql, params);
+    const [countRows] = await pool.query(countSql, params);
     const total = countRows[0].total;
 
     const dataSql = `
@@ -58,7 +58,7 @@ router.get('/', auth, async (req, res, next) => {
       LIMIT ? OFFSET ?`;
 
     const dataParams = [...params, limit, offset];
-    const [rows] = await pool.execute(dataSql, dataParams);
+    const [rows] = await pool.query(dataSql, dataParams);
 
     res.json({
       data: rows,
@@ -77,7 +77,7 @@ router.get('/', auth, async (req, res, next) => {
 // GET /api/products/:id
 router.get('/:id', auth, async (req, res, next) => {
   try {
-    const [products] = await pool.execute(
+    const [products] = await pool.query(
       `SELECT p.*, sr.name AS series_name, sr.category,
               se.year, se.season, se.name AS season_name
        FROM products p
@@ -91,7 +91,7 @@ router.get('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ message: '产品不存在' });
     }
 
-    const [images] = await pool.execute(
+    const [images] = await pool.query(
       'SELECT id, cos_key, thumbnail_url, original_url, file_size, sort_order FROM product_images WHERE product_id = ? ORDER BY sort_order',
       [req.params.id]
     );
@@ -106,13 +106,13 @@ router.get('/:id', auth, async (req, res, next) => {
 router.post('/', auth, admin, async (req, res, next) => {
   try {
     const { series_id, sku, color_name, material, size_range } = req.body;
-    if (!series_id || !sku || !color_name) {
-      return res.status(400).json({ message: '请填写系列、款号和颜色' });
+    if (!series_id || !sku) {
+      return res.status(400).json({ message: '请填写系列和款号' });
     }
 
-    const [result] = await pool.execute(
+    const [result] = await pool.query(
       'INSERT INTO products (series_id, sku, color_name, material, size_range) VALUES (?, ?, ?, ?, ?)',
-      [series_id, sku, color_name, material || null, size_range || null]
+      [series_id, sku, color_name || '', material || null, size_range || null]
     );
 
     res.status(201).json({ id: result.insertId, series_id, sku, color_name, material, size_range });
@@ -128,7 +128,7 @@ router.post('/', auth, admin, async (req, res, next) => {
 router.put('/:id', auth, admin, async (req, res, next) => {
   try {
     const { series_id, sku, color_name, material, size_range } = req.body;
-    await pool.execute(
+    await pool.query(
       `UPDATE products SET
         series_id = COALESCE(?, series_id),
         sku = COALESCE(?, sku),
@@ -147,7 +147,7 @@ router.put('/:id', auth, admin, async (req, res, next) => {
 // DELETE /api/products/:id
 router.delete('/:id', auth, admin, async (req, res, next) => {
   try {
-    await pool.execute('DELETE FROM products WHERE id = ?', [req.params.id]);
+    await pool.query('DELETE FROM products WHERE id = ?', [req.params.id]);
     res.json({ message: '删除成功' });
   } catch (err) {
     next(err);

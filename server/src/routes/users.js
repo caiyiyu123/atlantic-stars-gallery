@@ -9,7 +9,7 @@ const router = express.Router();
 // GET /api/users
 router.get('/', auth, admin, async (req, res, next) => {
   try {
-    const [rows] = await pool.execute(
+    const [rows] = await pool.query(
       'SELECT id, username, role, display_name, created_at FROM users ORDER BY created_at'
     );
     res.json(rows);
@@ -27,7 +27,7 @@ router.post('/', auth, admin, async (req, res, next) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const [result] = await pool.execute(
+    const [result] = await pool.query(
       'INSERT INTO users (username, password_hash, role, display_name) VALUES (?, ?, ?, ?)',
       [username, hash, role || 'viewer', display_name]
     );
@@ -45,7 +45,7 @@ router.post('/', auth, admin, async (req, res, next) => {
 router.put('/:id', auth, admin, async (req, res, next) => {
   try {
     const { role, display_name } = req.body;
-    await pool.execute(
+    await pool.query(
       'UPDATE users SET role = COALESCE(?, role), display_name = COALESCE(?, display_name) WHERE id = ?',
       [role || null, display_name || null, req.params.id]
     );
@@ -64,7 +64,7 @@ router.post('/:id/reset-password', auth, admin, async (req, res, next) => {
     }
 
     const hash = await bcrypt.hash(newPassword, 10);
-    await pool.execute(
+    await pool.query(
       'UPDATE users SET password_hash = ? WHERE id = ?',
       [hash, req.params.id]
     );
@@ -80,7 +80,7 @@ router.delete('/:id', auth, admin, async (req, res, next) => {
     if (parseInt(req.params.id, 10) === req.user.id) {
       return res.status(400).json({ message: '不能删除自己' });
     }
-    await pool.execute('DELETE FROM users WHERE id = ?', [req.params.id]);
+    await pool.query('DELETE FROM users WHERE id = ?', [req.params.id]);
     res.json({ message: '删除成功' });
   } catch (err) {
     next(err);

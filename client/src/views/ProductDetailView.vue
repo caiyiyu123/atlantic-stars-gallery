@@ -58,7 +58,6 @@
           <el-button type="primary" @click="handleDownload" :loading="downloading">
             下载全部图片
           </el-button>
-          <el-button @click="addToCompare">加入对比</el-button>
         </div>
       </div>
     </div>
@@ -126,19 +125,6 @@ async function handleDownload() {
   } finally {
     downloading.value = false;
   }
-}
-
-function addToCompare() {
-  const existing = JSON.parse(sessionStorage.getItem('compareIds') || '[]');
-  if (existing.includes(product.value.id)) {
-    return ElMessage.info('已在对比列表中');
-  }
-  if (existing.length >= 4) {
-    return ElMessage.warning('最多对比 4 款产品');
-  }
-  existing.push(product.value.id);
-  sessionStorage.setItem('compareIds', JSON.stringify(existing));
-  ElMessage.success('已加入对比');
 }
 
 onMounted(fetchProduct);

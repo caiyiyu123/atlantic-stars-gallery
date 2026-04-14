@@ -8,7 +8,7 @@ const router = express.Router();
 // GET /api/seasons
 router.get('/', auth, async (req, res, next) => {
   try {
-    const [rows] = await pool.execute(
+    const [rows] = await pool.query(
       'SELECT id, year, season, name FROM seasons ORDER BY year DESC, FIELD(season, "FW", "SS")'
     );
     res.json(rows);
@@ -25,7 +25,7 @@ router.post('/', auth, admin, async (req, res, next) => {
       return res.status(400).json({ message: '请填写年份和季节' });
     }
     const name = `${year} ${season}`;
-    const [result] = await pool.execute(
+    const [result] = await pool.query(
       'INSERT INTO seasons (year, season, name) VALUES (?, ?, ?)',
       [year, season, name]
     );
@@ -34,6 +34,16 @@ router.post('/', auth, admin, async (req, res, next) => {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ message: '该季度已存在' });
     }
+    next(err);
+  }
+});
+
+// DELETE /api/seasons/:id
+router.delete('/:id', auth, admin, async (req, res, next) => {
+  try {
+    await pool.query('DELETE FROM seasons WHERE id = ?', [req.params.id]);
+    res.json({ message: '删除成功' });
+  } catch (err) {
     next(err);
   }
 });
