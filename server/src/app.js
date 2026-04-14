@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const config = require('./config/env');
+require('./config/db'); // 启动时测试数据库连接
 
 const app = express();
 
