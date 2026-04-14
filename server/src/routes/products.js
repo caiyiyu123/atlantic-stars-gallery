@@ -46,7 +46,7 @@ router.get('/', auth, async (req, res, next) => {
 
     const dataSql = `
       SELECT p.id, p.sku, p.color_name, p.material, p.size_range,
-             sr.name AS series_name, sr.category,
+             p.series_id, sr.name AS series_name, sr.season_id, sr.category,
              se.year, se.season, se.name AS season_name,
              (SELECT thumbnail_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.sort_order LIMIT 1) AS cover_image,
              (SELECT COUNT(*) FROM product_images pi WHERE pi.product_id = p.id) AS image_count

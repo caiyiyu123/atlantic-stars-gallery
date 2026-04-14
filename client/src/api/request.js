@@ -18,7 +18,7 @@ request.interceptors.response.use(
   response => response.data,
   error => {
     const msg = error.response?.data?.message || '请求失败';
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !error.config.url?.includes('/auth/login')) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

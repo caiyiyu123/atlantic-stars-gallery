@@ -23,5 +23,6 @@ module.exports = {
     bucket: process.env.COS_BUCKET,
     region: process.env.COS_REGION,
     cdnDomain: process.env.COS_CDN_DOMAIN,
+    appId: process.env.COS_APP_ID,
   },
 };

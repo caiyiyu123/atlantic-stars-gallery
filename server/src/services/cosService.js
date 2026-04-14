@@ -1,36 +1,28 @@
 const cos = require('../config/cos');
 const config = require('../config/env');
 
-function getTempCredential(allowPrefix) {
-  return new Promise((resolve, reject) => {
-    const policy = {
+async function getTempCredential(allowPrefix) {
+  const STS = require('qcloud-cos-sts');
+  const result = await STS.getCredential({
+    secretId: config.cos.secretId,
+    secretKey: config.cos.secretKey,
+    durationSeconds: 1800,
+    policy: {
       version: '2.0',
       statement: [{
-        action: ['name/cos:PutObject', 'name/cos:PostObject'],
         effect: 'allow',
-        resource: [
-          `qcs::cos:${config.cos.region}:uid/*:${config.cos.bucket}/${allowPrefix}*`,
-        ],
+        action: ['name/cos:PutObject', 'name/cos:PostObject'],
+        resource: [`qcs::cos:${config.cos.region}:uid/${config.cos.appId}:${config.cos.bucket}/*`],
       }],
-    };
-
-    const STS = require('cos-nodejs-sdk-v5/sdk/sts');
-    STS.getCredential({
-      secretId: config.cos.secretId,
-      secretKey: config.cos.secretKey,
-      durationSeconds: 1800,
-      policy,
-    }, (err, data) => {
-      if (err) return reject(err);
-      resolve({
-        credentials: data.credentials,
-        expiredTime: data.expiredTime,
-        startTime: data.startTime,
-        bucket: config.cos.bucket,
-        region: config.cos.region,
-      });
-    });
+    },
   });
+  return {
+    credentials: result.credentials,
+    expiredTime: result.expiredTime,
+    startTime: result.startTime,
+    bucket: config.cos.bucket,
+    region: config.cos.region,
+  };
 }
 
 function getSignedUrl(key) {

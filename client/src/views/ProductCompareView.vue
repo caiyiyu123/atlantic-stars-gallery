@@ -49,7 +49,12 @@ async function fetchItems() {
   const idsStr = route.query.ids || sessionStorage.getItem('compareIds');
   if (!idsStr) return;
 
-  const ids = typeof idsStr === 'string' ? idsStr.split(',').map(Number) : JSON.parse(idsStr);
+  let ids;
+  try {
+    ids = JSON.parse(idsStr);
+  } catch {
+    ids = idsStr.split(',').map(Number);
+  }
 
   loading.value = true;
   try {

@@ -166,7 +166,7 @@ async function fetchSeries() {
 function openDialog(row = null) {
   if (row) {
     editingId.value = row.id;
-    form.value = { series_id: row.series_id, sku: row.sku, color_name: row.color_name, material: row.material, size_range: row.size_range, season_id: null, category: null };
+    form.value = { series_id: row.series_id, sku: row.sku, color_name: row.color_name, material: row.material, size_range: row.size_range, season_id: row.season_id, category: row.category };
   } else {
     editingId.value = null;
     form.value = { season_id: null, category: null, series_id: null, sku: '', color_name: '', material: '', size_range: '' };
