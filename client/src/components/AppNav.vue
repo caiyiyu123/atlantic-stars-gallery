@@ -7,6 +7,9 @@
     </div>
     <div class="nav-bar-row">
       <div class="nav-left">
+        <router-link to="/" class="nav-logo nav-logo-desktop">
+          <img src="@/assets/logo.png" alt="Atlantic Stars" class="nav-logo-img" />
+        </router-link>
         <router-link to="/" class="nav-link nav-link-yellow" :class="{ active: route.name === 'ProductList' }">
           产品图库
         </router-link>
@@ -69,7 +72,8 @@ function handleLogout() {
 <style scoped>
 .app-nav {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   padding: 14px 28px;
   background: rgba(251, 251, 253, 0.72);
   backdrop-filter: saturate(180%) blur(20px);
@@ -83,15 +87,20 @@ function handleLogout() {
 }
 
 .nav-logo-row {
+  display: none;
+}
+
+.nav-logo-desktop {
   display: flex;
-  justify-content: center;
-  margin-bottom: 12px;
+  align-items: center;
+  text-decoration: none;
 }
 
 .nav-bar-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
 }
 
 .nav-left {
@@ -214,15 +223,26 @@ function handleLogout() {
 
 @media (max-width: 768px) {
   .app-nav {
+    flex-direction: column;
     padding: 10px 14px;
   }
 
+  .nav-logo-desktop {
+    display: none;
+  }
+
   .nav-logo-row {
+    display: flex;
+    justify-content: center;
     margin-bottom: 8px;
   }
 
-  .nav-logo-img {
+  .nav-logo-row .nav-logo-img {
     height: 36px;
+  }
+
+  .nav-bar-row {
+    width: 100%;
   }
 
   .nav-link {
