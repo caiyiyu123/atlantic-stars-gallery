@@ -217,8 +217,9 @@ router.post('/download', auth, async (req, res, next) => {
 
     archive.pipe(res);
 
+    const serverRoot = path.join(__dirname, '../..');
     for (const img of images) {
-      const localPath = path.join(__dirname, '../../', img.cos_key);
+      const localPath = path.join(serverRoot, img.cos_key);
       if (fs.existsSync(localPath)) {
         const ext = img.cos_key.split('.').pop();
         archive.file(localPath, { name: `${img.sku}/${img.sort_order}.${ext}` });
@@ -227,7 +228,10 @@ router.post('/download', auth, async (req, res, next) => {
 
     await archive.finalize();
   } catch (err) {
-    next(err);
+    console.error('Download error:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ message: '下载失败' });
+    }
   }
 });
 
