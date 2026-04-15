@@ -1,7 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
-const admin = require('../middleware/admin');
+const { requireModule } = require('../middleware/permission');
 
 const router = express.Router();
 
@@ -18,7 +18,7 @@ router.get('/', auth, async (req, res, next) => {
 });
 
 // POST /api/seasons
-router.post('/', auth, admin, async (req, res, next) => {
+router.post('/', auth, requireModule('series'), async (req, res, next) => {
   try {
     const { year, season } = req.body;
     if (!year || !season) {
@@ -39,7 +39,7 @@ router.post('/', auth, admin, async (req, res, next) => {
 });
 
 // DELETE /api/seasons/:id
-router.delete('/:id', auth, admin, async (req, res, next) => {
+router.delete('/:id', auth, requireModule('series'), async (req, res, next) => {
   try {
     await pool.query('DELETE FROM seasons WHERE id = ?', [req.params.id]);
     res.json({ message: '删除成功' });

@@ -4,7 +4,7 @@ const fs = require('fs');
 const multer = require('multer');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
-const admin = require('../middleware/admin');
+const { requireModule } = require('../middleware/permission');
 const config = require('../config/env');
 
 const router = express.Router();
@@ -43,7 +43,7 @@ const upload = multer({
 });
 
 // POST /api/images/upload - 本地上传
-router.post('/upload', auth, admin, upload.array('files', 20), async (req, res, next) => {
+router.post('/upload', auth, requireModule('products'), upload.array('files', 20), async (req, res, next) => {
   try {
     const { product_id } = req.body;
     if (!product_id || !req.files || req.files.length === 0) {
@@ -84,7 +84,7 @@ router.post('/upload', auth, admin, upload.array('files', 20), async (req, res, 
 });
 
 // POST /api/images/upload-token (COS模式 - 需要COS配置)
-router.post('/upload-token', auth, admin, async (req, res, next) => {
+router.post('/upload-token', auth, requireModule('products'), async (req, res, next) => {
   try {
     const cosService = require('../services/cosService');
     const { prefix } = req.body;
@@ -99,7 +99,7 @@ router.post('/upload-token', auth, admin, async (req, res, next) => {
 });
 
 // POST /api/images (COS模式 - 注册图片记录)
-router.post('/', auth, admin, async (req, res, next) => {
+router.post('/', auth, requireModule('products'), async (req, res, next) => {
   try {
     const { product_id, cos_key, file_size } = req.body;
     if (!product_id || !cos_key) {
@@ -134,7 +134,7 @@ router.post('/', auth, admin, async (req, res, next) => {
 });
 
 // PUT /api/images/sort
-router.put('/sort', auth, admin, async (req, res, next) => {
+router.put('/sort', auth, requireModule('products'), async (req, res, next) => {
   try {
     const { orders } = req.body;
     if (!Array.isArray(orders)) {
@@ -165,7 +165,7 @@ router.put('/sort', auth, admin, async (req, res, next) => {
 });
 
 // DELETE /api/images/:id
-router.delete('/:id', auth, admin, async (req, res, next) => {
+router.delete('/:id', auth, requireModule('products'), async (req, res, next) => {
   try {
     const [rows] = await pool.query(
       'SELECT cos_key FROM product_images WHERE id = ?',

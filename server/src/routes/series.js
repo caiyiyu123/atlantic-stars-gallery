@@ -1,7 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
-const admin = require('../middleware/admin');
+const { requireModule } = require('../middleware/permission');
 
 const router = express.Router();
 
@@ -29,7 +29,7 @@ router.get('/', auth, async (req, res, next) => {
 });
 
 // POST /api/series
-router.post('/', auth, admin, async (req, res, next) => {
+router.post('/', auth, requireModule('series'), async (req, res, next) => {
   try {
     const { season_id, category, name, description } = req.body;
     if (!season_id || !category || !name) {
@@ -47,7 +47,7 @@ router.post('/', auth, admin, async (req, res, next) => {
 });
 
 // PUT /api/series/:id
-router.put('/:id', auth, admin, async (req, res, next) => {
+router.put('/:id', auth, requireModule('series'), async (req, res, next) => {
   try {
     const { name, description, category } = req.body;
     await pool.query(
@@ -61,7 +61,7 @@ router.put('/:id', auth, admin, async (req, res, next) => {
 });
 
 // DELETE /api/series/:id
-router.delete('/:id', auth, admin, async (req, res, next) => {
+router.delete('/:id', auth, requireModule('series'), async (req, res, next) => {
   try {
     await pool.query('DELETE FROM series WHERE id = ?', [req.params.id]);
     res.json({ message: '删除成功' });
