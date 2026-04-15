@@ -44,6 +44,15 @@ router.post('/login', loginLimiter, async (req, res, next) => {
       { expiresIn: config.jwt.expiresIn }
     );
 
+    let permissions = ['gallery', 'products', 'series'];
+    if (user.role === 'operator') {
+      const [perms] = await pool.query(
+        'SELECT module FROM user_permissions WHERE user_id = ?',
+        [user.id]
+      );
+      permissions = perms.map(p => p.module);
+    }
+
     res.json({
       token,
       user: {
@@ -51,6 +60,7 @@ router.post('/login', loginLimiter, async (req, res, next) => {
         username: user.username,
         role: user.role,
         displayName: user.display_name,
+        permissions,
       },
     });
   } catch (err) {
