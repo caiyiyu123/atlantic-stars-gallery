@@ -6,7 +6,11 @@
     </div>
 
     <el-table :data="users" v-loading="loading" style="width: 100%;">
-      <el-table-column prop="username" label="用户名" width="200" />
+      <el-table-column prop="username" label="用户名" width="200">
+        <template #default="{ row }">
+          <span style="font-size: 16px; font-weight: 500;">{{ row.username }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="角色" width="140">
         <template #default="{ row }">
           <el-tag :type="roleTagType(row.role)" size="small" round>
@@ -35,17 +39,10 @@
       <el-table-column label="操作" width="280">
         <template #default="{ row }">
           <template v-if="canManage(row)">
-            <el-button text type="primary" size="small" @click="openDialog(row)">编辑</el-button>
-            <el-button text type="primary" size="small" @click="openResetPwd(row)">重置密码</el-button>
-            <el-button text type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button text type="primary" @click="openDialog(row)">编辑</el-button>
+            <el-button text type="primary" @click="openResetPwd(row)">重置密码</el-button>
+            <el-button text type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
-          <el-button
-            v-if="auth.isSuperAdmin && row.id !== auth.user?.id && row.role !== 'super_admin'"
-            text type="warning" size="small"
-            @click="openTransfer(row)"
-          >
-            移交主管理员
-          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -74,6 +71,13 @@
         </el-form-item>
       </el-form>
       <template #footer>
+        <el-button
+          v-if="editingId && auth.isSuperAdmin && form.username !== auth.user?.username && form.role !== 'super_admin'"
+          type="warning"
+          @click="openTransfer({ id: editingId, username: form.username })"
+        >
+          移交主管理员
+        </el-button>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
       </template>
