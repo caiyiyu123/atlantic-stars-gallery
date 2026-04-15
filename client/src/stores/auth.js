@@ -6,7 +6,15 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(JSON.parse(localStorage.getItem('user') || 'null'));
 
   const isLoggedIn = computed(() => !!token.value);
-  const isAdmin = computed(() => user.value?.role === 'admin');
+  const isSuperAdmin = computed(() => user.value?.role === 'super_admin');
+  const isAdmin = computed(() => user.value?.role === 'admin' || user.value?.role === 'super_admin');
+  const isOperator = computed(() => user.value?.role === 'operator');
+
+  function hasModule(module) {
+    if (!user.value) return false;
+    if (user.value.role === 'super_admin' || user.value.role === 'admin') return true;
+    return user.value.permissions?.includes(module) || false;
+  }
 
   function setAuth(tokenVal, userVal) {
     token.value = tokenVal;
@@ -22,5 +30,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('user');
   }
 
-  return { token, user, isLoggedIn, isAdmin, setAuth, logout };
+  return { token, user, isLoggedIn, isSuperAdmin, isAdmin, isOperator, hasModule, setAuth, logout };
 });

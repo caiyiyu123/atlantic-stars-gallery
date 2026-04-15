@@ -17,29 +17,31 @@ const routes = [
         path: '',
         name: 'ProductList',
         component: () => import('../views/ProductListView.vue'),
+        meta: { requiredModule: 'gallery' },
       },
       {
         path: 'product/:id',
         name: 'ProductDetail',
         component: () => import('../views/ProductDetailView.vue'),
+        meta: { requiredModule: 'gallery' },
       },
-{
+      {
         path: 'admin/products',
         name: 'ProductManage',
         component: () => import('../views/admin/ProductManageView.vue'),
-        meta: { requiresAdmin: true },
+        meta: { requiredModule: 'products' },
       },
       {
         path: 'admin/series',
         name: 'SeriesManage',
         component: () => import('../views/admin/SeriesManageView.vue'),
-        meta: { requiresAdmin: true },
+        meta: { requiredModule: 'series' },
       },
       {
         path: 'admin/users',
         name: 'UserManage',
         component: () => import('../views/admin/UserManageView.vue'),
-        meta: { requiresAdmin: true },
+        meta: { requiredRole: ['super_admin', 'admin'] },
       },
     ],
   },
@@ -59,8 +61,15 @@ router.beforeEach((to, from, next) => {
   if (to.meta.guest && auth.isLoggedIn) {
     return next('/');
   }
-  if (to.meta.requiresAdmin && !auth.isAdmin) {
-    return next('/');
+  if (to.meta.requiredRole) {
+    if (!to.meta.requiredRole.includes(auth.user?.role)) {
+      return next('/');
+    }
+  }
+  if (to.meta.requiredModule) {
+    if (!auth.hasModule(to.meta.requiredModule)) {
+      return next('/login');
+    }
   }
   next();
 });

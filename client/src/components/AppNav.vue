@@ -10,13 +10,13 @@
         <router-link to="/" class="nav-logo nav-logo-desktop">
           <img src="@/assets/logo.png" alt="Atlantic Stars" class="nav-logo-img" />
         </router-link>
-        <router-link to="/" class="nav-link nav-link-yellow" :class="{ active: route.name === 'ProductList' }">
+        <router-link v-if="auth.hasModule('gallery')" to="/" class="nav-link nav-link-yellow" :class="{ active: route.name === 'ProductList' }">
           产品图库
         </router-link>
-        <router-link v-if="auth.isAdmin" to="/admin/products" class="nav-link nav-link-orange" :class="{ active: route.name === 'ProductManage' }">
+        <router-link v-if="auth.hasModule('products')" to="/admin/products" class="nav-link nav-link-orange" :class="{ active: route.name === 'ProductManage' }">
           产品管理
         </router-link>
-        <router-link v-if="auth.isAdmin" to="/admin/series" class="nav-link nav-link-red" :class="{ active: route.name === 'SeriesManage' }">
+        <router-link v-if="auth.hasModule('series')" to="/admin/series" class="nav-link nav-link-red" :class="{ active: route.name === 'SeriesManage' }">
           系列管理
         </router-link>
       </div>
