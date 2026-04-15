@@ -2,7 +2,6 @@
   <div class="login-page">
     <div class="login-card">
       <img src="@/assets/logo.png" alt="Atlantic Stars" class="login-logo-img" />
-      <p class="login-subtitle">产品图片库</p>
 
       <el-form
         ref="formRef"
@@ -91,7 +90,7 @@ async function handleLogin() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-bg);
+  background: linear-gradient(135deg, #CF2028, #EE7624, #F5D726);
 }
 
 .login-card {
@@ -105,9 +104,9 @@ async function handleLogin() {
 }
 
 .login-logo-img {
-  height: 60px;
+  height: 100px;
   width: auto;
-  margin: 0 auto 16px;
+  margin: 0 auto 24px;
   display: block;
 }
 
