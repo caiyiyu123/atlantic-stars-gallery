@@ -33,11 +33,10 @@
       <el-table-column prop="material" label="材质" width="140" />
       <el-table-column prop="size_range" label="尺码" width="100" />
       <el-table-column prop="image_count" label="图片" width="80" align="center" />
-      <el-table-column label="操作" width="260">
+      <el-table-column label="操作" width="160" align="center">
         <template #default="{ row }">
-          <el-button text type="primary" size="small" @click="openDialog(row)">编辑</el-button>
-          <el-button text type="primary" size="small" @click="openUpload(row)">上传图片</el-button>
-          <el-button text type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+          <el-button text type="primary" @click="openDialog(row)">编辑</el-button>
+          <el-button text type="danger" @click="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -52,7 +51,7 @@
       />
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑产品' : '新增产品'" width="480px">
+    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑产品' : '新增产品'" width="600px">
       <el-form :model="form" label-width="80px">
         <el-form-item label="季度">
           <el-select v-model="form.season_id" placeholder="选择季度" style="width: 100%;" @change="onSeasonChange">
@@ -83,34 +82,35 @@
         <el-form-item label="尺码">
           <el-input v-model="form.size_range" placeholder="如 39-45" />
         </el-form-item>
+        <el-form-item label="产品图片">
+          <!-- 已有图片 -->
+          <div v-if="existingImages.length > 0" class="existing-images">
+            <div v-for="img in existingImages" :key="img.id" class="existing-image-item">
+              <img :src="img.thumbnail_url" class="existing-thumb" />
+              <div class="image-delete-btn" @click="handleDeleteImage(img.id)">×</div>
+            </div>
+          </div>
+          <!-- 拖拽上传 -->
+          <el-upload
+            drag
+            multiple
+            :auto-upload="false"
+            :file-list="fileList"
+            accept="image/jpeg,image/png,image/webp"
+            :on-change="onFileChange"
+            list-type="picture"
+          >
+            <div class="upload-area">
+              <div class="upload-icon">↑</div>
+              <div>拖拽图片到此处，或点击选择文件</div>
+              <div class="upload-hint">支持 JPG / PNG / WebP，单文件最大 20MB</div>
+            </div>
+          </el-upload>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="uploadVisible" :title="`上传图片 — ${uploadProduct?.sku}`" width="560px">
-      <el-upload
-        drag
-        multiple
-        :auto-upload="false"
-        :file-list="fileList"
-        accept="image/jpeg,image/png,image/webp"
-        :on-change="onFileChange"
-        list-type="picture"
-      >
-        <div class="upload-area">
-          <div class="upload-icon">↑</div>
-          <div>拖拽图片到此处，或点击选择文件</div>
-          <div class="upload-hint">支持 JPG / PNG / WebP，单文件最大 20MB</div>
-        </div>
-      </el-upload>
-      <template #footer>
-        <el-button @click="uploadVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleUpload" :loading="uploading" :disabled="fileList.length === 0">
-          上传 {{ fileList.length }} 张
-        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -119,10 +119,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { getProducts, createProduct, updateProduct, deleteProduct } from '../../api/products';
+import { getProducts, getProduct, createProduct, updateProduct, deleteProduct } from '../../api/products';
 import { getSeasons } from '../../api/seasons';
 import { getSeries } from '../../api/series';
-import { uploadLocalImages } from '../../api/images';
+import { uploadLocalImages, deleteImage } from '../../api/images';
 
 const products = ref([]);
 const seasons = ref([]);
@@ -139,10 +139,8 @@ const editingId = ref(null);
 const saving = ref(false);
 const form = ref({ season_id: null, category: null, series_id: null, sku: '', color_name: '', material: '', size_range: '' });
 
-const uploadVisible = ref(false);
-const uploadProduct = ref(null);
 const fileList = ref([]);
-const uploading = ref(false);
+const existingImages = ref([]);
 
 const filterSeriesOptions = computed(() => {
   if (!filterSeason.value) return seriesList.value;
@@ -184,10 +182,17 @@ async function fetchSeries() {
   seriesList.value = await getSeries({});
 }
 
-function openDialog(row = null) {
+async function openDialog(row = null) {
+  fileList.value = [];
+  existingImages.value = [];
   if (row) {
     editingId.value = row.id;
     form.value = { series_id: row.series_id, sku: row.sku, color_name: row.color_name, material: row.material, size_range: row.size_range, season_id: row.season_id, category: row.category };
+    // 加载已有图片
+    try {
+      const detail = await getProduct(row.id);
+      existingImages.value = detail.images || [];
+    } catch (e) { /* ignore */ }
   } else {
     editingId.value = null;
     form.value = { season_id: null, category: null, series_id: null, sku: '', color_name: '', material: '', size_range: '' };
@@ -199,13 +204,18 @@ async function handleSave() {
   saving.value = true;
   try {
     const data = { series_id: form.value.series_id, sku: form.value.sku, color_name: form.value.color_name, material: form.value.material, size_range: form.value.size_range };
+    let productId = editingId.value;
     if (editingId.value) {
       await updateProduct(editingId.value, data);
-      ElMessage.success('更新成功');
     } else {
-      await createProduct(data);
-      ElMessage.success('创建成功');
+      const res = await createProduct(data);
+      productId = res.id;
     }
+    // 上传新图片
+    if (fileList.value.length > 0 && productId) {
+      await uploadLocalImages(productId, fileList.value);
+    }
+    ElMessage.success(editingId.value ? '更新成功' : '创建成功');
     dialogVisible.value = false;
     fetchList(page.value);
   } finally {
@@ -220,29 +230,15 @@ async function handleDelete(row) {
   fetchList(page.value);
 }
 
-function openUpload(row) {
-  uploadProduct.value = row;
-  fileList.value = [];
-  uploadVisible.value = true;
-}
-
 function onFileChange(file, files) {
   fileList.value = files;
 }
 
-async function handleUpload() {
-  uploading.value = true;
-  try {
-    const product = uploadProduct.value;
-    const res = await uploadLocalImages(product.id, fileList.value);
-    ElMessage.success(`${res.uploaded} 张图片上传成功`);
-    uploadVisible.value = false;
-    fetchList(page.value);
-  } catch (err) {
-    ElMessage.error('上传失败: ' + (err.message || '未知错误'));
-  } finally {
-    uploading.value = false;
-  }
+async function handleDeleteImage(imageId) {
+  await ElMessageBox.confirm('确定删除此图片？', '确认', { type: 'warning' });
+  await deleteImage(imageId);
+  existingImages.value = existingImages.value.filter(img => img.id !== imageId);
+  ElMessage.success('图片已删除');
 }
 
 function onFilterSeasonChange() {
@@ -315,5 +311,43 @@ onMounted(() => {
   border-radius: 6px;
   display: block;
   margin: 0 auto;
+}
+
+.existing-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.existing-image-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.existing-thumb {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #e8e8ed;
+}
+
+.image-delete-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  background: #e53e3e;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
 }
 </style>
