@@ -2,6 +2,7 @@ const express = require('express');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const { requireModule } = require('../middleware/permission');
+const { logOperation } = require('../middleware/operationLog');
 
 const router = express.Router();
 
@@ -40,6 +41,7 @@ router.post('/', auth, requireModule('series'), async (req, res, next) => {
       'INSERT INTO series (season_id, category, name, description) VALUES (?, ?, ?, ?)',
       [season_id, category, name, description || null]
     );
+    logOperation(req, '新增系列', `系列: ${name}, 分类: ${category}`);
     res.status(201).json({ id: result.insertId, season_id, category, name, description });
   } catch (err) {
     next(err);
@@ -54,6 +56,7 @@ router.put('/:id', auth, requireModule('series'), async (req, res, next) => {
       'UPDATE series SET name = COALESCE(?, name), description = COALESCE(?, description), category = COALESCE(?, category) WHERE id = ?',
       [name || null, description || null, category || null, req.params.id]
     );
+    logOperation(req, '编辑系列', `系列ID: ${req.params.id}`);
     res.json({ message: '更新成功' });
   } catch (err) {
     next(err);
@@ -64,6 +67,7 @@ router.put('/:id', auth, requireModule('series'), async (req, res, next) => {
 router.delete('/:id', auth, requireModule('series'), async (req, res, next) => {
   try {
     await pool.query('DELETE FROM series WHERE id = ?', [req.params.id]);
+    logOperation(req, '删除系列', `系列ID: ${req.params.id}`);
     res.json({ message: '删除成功' });
   } catch (err) {
     next(err);

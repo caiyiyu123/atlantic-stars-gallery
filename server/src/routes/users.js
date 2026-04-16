@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const { requireRole } = require('../middleware/permission');
+const { logOperation } = require('../middleware/operationLog');
 
 const router = express.Router();
 
@@ -76,6 +77,7 @@ router.post('/', auth, canManageUsers, async (req, res, next) => {
         }
       }
       await conn.commit();
+      logOperation(req, '新增用户', `用户名: ${username}, 角色: ${role}`);
       res.status(201).json({ id: result.insertId, username, role, display_name: username, permissions: permissions || [] });
     } catch (err) {
       await conn.rollback();
@@ -131,6 +133,7 @@ router.put('/:id', auth, canManageUsers, async (req, res, next) => {
         await conn.query('DELETE FROM user_permissions WHERE user_id = ?', [targetId]);
       }
       await conn.commit();
+      logOperation(req, '编辑用户', `用户ID: ${targetId}, 角色: ${finalRole}`);
       res.json({ message: '更新成功' });
     } catch (err) {
       await conn.rollback();
@@ -166,6 +169,7 @@ router.post('/transfer-super-admin', auth, requireRole('super_admin'), async (re
       await conn.query('DELETE FROM user_permissions WHERE user_id = ?', [targetUserId]);
       await conn.query("UPDATE users SET role = 'admin' WHERE id = ?", [req.user.id]);
       await conn.commit();
+      logOperation(req, '移交主管理员', `移交给用户ID: ${targetUserId}`);
       res.json({ message: '主管理员移交成功' });
     } catch (err) {
       await conn.rollback();
@@ -198,6 +202,7 @@ router.post('/:id/reset-password', auth, canManageUsers, async (req, res, next) 
     }
     const hash = await bcrypt.hash(newPassword, 10);
     await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [hash, targetId]);
+    logOperation(req, '重置密码', `用户ID: ${targetId}`);
     res.json({ message: '密码重置成功' });
   } catch (err) {
     next(err);
@@ -222,6 +227,7 @@ router.delete('/:id', auth, canManageUsers, async (req, res, next) => {
       return res.status(403).json({ message: '管理员只能删除运营账号' });
     }
     await pool.query('DELETE FROM users WHERE id = ?', [targetId]);
+    logOperation(req, '删除用户', `用户ID: ${targetId}`);
     res.json({ message: '删除成功' });
   } catch (err) {
     next(err);

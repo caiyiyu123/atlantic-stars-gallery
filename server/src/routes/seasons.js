@@ -2,6 +2,7 @@ const express = require('express');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const { requireModule } = require('../middleware/permission');
+const { logOperation } = require('../middleware/operationLog');
 
 const router = express.Router();
 
@@ -29,6 +30,7 @@ router.post('/', auth, requireModule('series'), async (req, res, next) => {
       'INSERT INTO seasons (year, season, name) VALUES (?, ?, ?)',
       [year, season, name]
     );
+    logOperation(req, '新增季度', `季度: ${name}`);
     res.status(201).json({ id: result.insertId, year, season, name });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
@@ -42,6 +44,7 @@ router.post('/', auth, requireModule('series'), async (req, res, next) => {
 router.delete('/:id', auth, requireModule('series'), async (req, res, next) => {
   try {
     await pool.query('DELETE FROM seasons WHERE id = ?', [req.params.id]);
+    logOperation(req, '删除季度', `季度ID: ${req.params.id}`);
     res.json({ message: '删除成功' });
   } catch (err) {
     next(err);

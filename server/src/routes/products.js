@@ -2,6 +2,7 @@ const express = require('express');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const { requireModule } = require('../middleware/permission');
+const { logOperation } = require('../middleware/operationLog');
 
 const router = express.Router();
 
@@ -115,6 +116,7 @@ router.post('/', auth, requireModule('products'), async (req, res, next) => {
       [series_id, sku, color_name || '', material || null, size_range || null]
     );
 
+    logOperation(req, '新增产品', `款号: ${sku}`);
     res.status(201).json({ id: result.insertId, series_id, sku, color_name, material, size_range });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
@@ -138,6 +140,7 @@ router.put('/:id', auth, requireModule('products'), async (req, res, next) => {
        WHERE id = ?`,
       [series_id || null, sku || null, color_name || null, material || null, size_range || null, req.params.id]
     );
+    logOperation(req, '编辑产品', `产品ID: ${req.params.id}`);
     res.json({ message: '更新成功' });
   } catch (err) {
     next(err);
@@ -148,6 +151,7 @@ router.put('/:id', auth, requireModule('products'), async (req, res, next) => {
 router.delete('/:id', auth, requireModule('products'), async (req, res, next) => {
   try {
     await pool.query('DELETE FROM products WHERE id = ?', [req.params.id]);
+    logOperation(req, '删除产品', `产品ID: ${req.params.id}`);
     res.json({ message: '删除成功' });
   } catch (err) {
     next(err);

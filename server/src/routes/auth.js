@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const config = require('../config/env');
 const auth = require('../middleware/auth');
+const { logLogin } = require('../middleware/operationLog');
 
 const rateLimit = require('express-rate-limit');
 
@@ -52,6 +53,9 @@ router.post('/login', loginLimiter, async (req, res, next) => {
       );
       permissions = perms.map(p => p.module);
     }
+
+    // 记录登录日志（不阻塞响应）
+    logLogin(req, user.id, user.username);
 
     res.json({
       token,

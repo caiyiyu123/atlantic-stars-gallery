@@ -36,8 +36,9 @@
           {{ new Date(row.created_at).toLocaleDateString('zh-CN') }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="280">
+      <el-table-column label="操作" width="340">
         <template #default="{ row }">
+          <el-button v-if="auth.isSuperAdmin" text type="info" @click="openLogDialog(row)">记录</el-button>
           <template v-if="canManage(row)">
             <el-button text type="primary" @click="openDialog(row)">编辑</el-button>
             <el-button text type="primary" @click="openResetPwd(row)">重置密码</el-button>
@@ -107,6 +108,29 @@
         <el-button type="warning" @click="handleTransfer" :loading="transferring">确认移交</el-button>
       </template>
     </el-dialog>
+
+    <!-- 操作日志对话框 -->
+    <el-dialog v-model="logVisible" :title="`${logUser?.username} 的操作记录`" width="700px">
+      <el-table :data="logList" v-loading="logLoading" style="width: 100%;" max-height="460">
+        <el-table-column prop="action" label="操作" width="120" />
+        <el-table-column prop="detail" label="详情" min-width="200" />
+        <el-table-column prop="ip" label="IP地址" width="140" />
+        <el-table-column label="时间" width="180">
+          <template #default="{ row }">
+            {{ formatTime(row.created_at) }}
+          </template>
+        </el-table-column>
+      </el-table>
+      <div v-if="logPagination.totalPages > 1" class="log-pagination">
+        <el-pagination
+          v-model:current-page="logPagination.page"
+          :page-size="logPagination.limit"
+          :total="logPagination.total"
+          layout="prev, pager, next"
+          @current-change="handleLogPageChange"
+        />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -115,6 +139,7 @@ import { ref, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useAuthStore } from '../../stores/auth';
 import { getUsers, createUser, updateUser, resetPassword, deleteUser, transferSuperAdmin } from '../../api/users';
+import { getUserLogs } from '../../api/logs';
 
 const auth = useAuthStore();
 
@@ -135,6 +160,12 @@ const transferVisible = ref(false);
 const transferTarget = ref(null);
 const transferPassword = ref('');
 const transferring = ref(false);
+
+const logVisible = ref(false);
+const logUser = ref(null);
+const logList = ref([]);
+const logLoading = ref(false);
+const logPagination = ref({ page: 1, limit: 50, total: 0, totalPages: 0 });
 
 function roleLabel(role) {
   const map = { super_admin: '主管理员', admin: '管理员', operator: '运营' };
@@ -225,6 +256,35 @@ async function handleResetPwd() {
   }
 }
 
+function formatTime(dateStr) {
+  const d = new Date(dateStr);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+async function openLogDialog(row) {
+  logUser.value = row;
+  logPagination.value.page = 1;
+  logVisible.value = true;
+  await fetchLogs();
+}
+
+async function fetchLogs() {
+  logLoading.value = true;
+  try {
+    const res = await getUserLogs(logUser.value.id, logPagination.value.page, logPagination.value.limit);
+    logList.value = res.data;
+    logPagination.value = res.pagination;
+  } finally {
+    logLoading.value = false;
+  }
+}
+
+async function handleLogPageChange(page) {
+  logPagination.value.page = page;
+  await fetchLogs();
+}
+
 function openTransfer(row) {
   transferTarget.value = row;
   transferPassword.value = '';
@@ -266,5 +326,11 @@ onMounted(fetchUsers);
 
 .perm-tag {
   margin-right: 4px;
+}
+
+.log-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
 }
 </style>

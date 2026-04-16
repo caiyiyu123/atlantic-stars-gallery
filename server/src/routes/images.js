@@ -6,6 +6,7 @@ const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const { requireModule } = require('../middleware/permission');
 const config = require('../config/env');
+const { logOperation } = require('../middleware/operationLog');
 
 const router = express.Router();
 const uploadsDir = path.resolve(__dirname, '../../uploads');
@@ -77,6 +78,7 @@ router.post('/upload', auth, requireModule('products'), upload.array('files', 20
       });
     }
 
+    logOperation(req, '上传图片', `产品ID: ${product_id}, 数量: ${results.length}`);
     res.status(201).json({ uploaded: results.length, images: results });
   } catch (err) {
     next(err);
@@ -191,6 +193,7 @@ router.delete('/:id', auth, requireModule('products'), async (req, res, next) =>
     }
 
     await pool.query('DELETE FROM product_images WHERE id = ?', [req.params.id]);
+    logOperation(req, '删除图片', `图片ID: ${req.params.id}`);
     res.json({ message: '删除成功' });
   } catch (err) {
     next(err);
