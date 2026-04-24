@@ -55,7 +55,7 @@
             </div>
           </template>
 
-          <div class="batch-grid">
+          <div v-if="expandedBatches.includes(batch.batch_id)" class="batch-grid">
             <!-- 原图（每张去重后作为第一批卡片） -->
             <div
               v-for="(orig, idx) in batch.originalImages"
@@ -64,7 +64,7 @@
               @click="previewImage(orig)"
             >
               <div class="img-wrap">
-                <img :src="toUrl(orig)" />
+                <img :src="toUrl(orig)" loading="lazy" decoding="async" />
                 <span class="badge-original">原图</span>
               </div>
               <div class="card-info">
@@ -76,7 +76,12 @@
             <!-- 结果图 -->
             <div v-for="job in batch.jobs" :key="job.id" class="card" @click="previewJobImage(job)">
               <div class="img-wrap">
-                <img v-if="job.status === 'success'" :src="toUrl(job.result_image_path)" />
+                <img
+                  v-if="job.status === 'success'"
+                  :src="toUrl(job.result_image_path)"
+                  loading="lazy"
+                  decoding="async"
+                />
                 <div v-else class="fail-placeholder">
                   <span>{{ job.status === 'failed' ? '❌ 失败' : (job.status === 'processing' ? '⏳ 处理中' : job.status) }}</span>
                 </div>
