@@ -7,34 +7,40 @@
     </div>
     <div class="nav-bar-row">
       <div class="nav-left">
-        <router-link to="/" class="nav-logo nav-logo-desktop">
+        <router-link :to="isAiSection ? '/ai/hd-white' : '/'" class="nav-logo nav-logo-desktop">
           <img src="@/assets/logo.png" alt="Atlantic Stars" class="nav-logo-img" />
         </router-link>
-        <router-link v-if="auth.hasModule('gallery')" to="/" class="nav-link nav-link-yellow" :class="{ active: route.name === 'ProductList' }">
-          产品图库
-        </router-link>
-        <router-link v-if="auth.hasModule('products')" to="/admin/products" class="nav-link nav-link-orange" :class="{ active: route.name === 'ProductManage' }">
-          产品管理
-        </router-link>
-        <router-link v-if="auth.hasModule('series')" to="/admin/series" class="nav-link nav-link-red" :class="{ active: route.name === 'SeriesManage' }">
-          系列管理
-        </router-link>
+
+        <!-- AS 产品库板块 -->
+        <template v-if="!isAiSection">
+          <router-link v-if="auth.hasModule('gallery')" to="/" class="nav-link nav-link-yellow" :class="{ active: route.name === 'ProductList' }">产品图库</router-link>
+          <router-link v-if="auth.hasModule('products')" to="/admin/products" class="nav-link nav-link-orange" :class="{ active: route.name === 'ProductManage' }">产品管理</router-link>
+          <router-link v-if="auth.hasModule('series')" to="/admin/series" class="nav-link nav-link-red" :class="{ active: route.name === 'SeriesManage' }">系列管理</router-link>
+        </template>
+
+        <!-- AS-AI 板块 -->
+        <template v-else>
+          <router-link to="/ai/hd-white" class="nav-link nav-link-yellow" :class="{ active: route.name === 'AiHdWhite' }">高清白底图</router-link>
+          <span class="nav-link nav-link-orange nav-link-disabled" title="敬请期待">功能二</span>
+          <span class="nav-link nav-link-red nav-link-disabled" title="敬请期待">功能三</span>
+        </template>
       </div>
       <div class="nav-right">
-        <span class="nav-username">{{ auth.user?.displayName }}</span>
-        <div class="nav-avatar-wrapper" @click="showDropdown = !showDropdown" v-click-outside="() => showDropdown = false">
-          <div class="nav-avatar">
-            {{ auth.user?.displayName?.charAt(0) }}
-          </div>
-          <div v-if="showDropdown" class="nav-dropdown">
-            <router-link v-if="auth.isAdmin" to="/admin/users" class="dropdown-item" @click="showDropdown = false">
-              用户管理
-            </router-link>
-            <router-link v-if="auth.isSuperAdmin" to="/admin/api-keys" class="dropdown-item" @click="showDropdown = false">
-              API Key 管理
-            </router-link>
-            <div class="dropdown-item dropdown-logout" @click="handleLogout">
-              退出登录
+        <div v-if="showSwitchButton" class="nav-switch-wrap">
+          <router-link :to="switchTarget" class="nav-switch">{{ switchLabel }}</router-link>
+        </div>
+        <div class="nav-user-row">
+          <span class="nav-username">{{ auth.user?.displayName }}</span>
+          <div class="nav-avatar-wrapper" @click="showDropdown = !showDropdown" v-click-outside="() => showDropdown = false">
+            <div class="nav-avatar">{{ auth.user?.displayName?.charAt(0) }}</div>
+            <div v-if="showDropdown" class="nav-dropdown">
+              <router-link v-if="auth.isAdmin" to="/admin/users" class="dropdown-item" @click="showDropdown = false">
+                用户管理
+              </router-link>
+              <router-link v-if="auth.isSuperAdmin" to="/admin/api-keys" class="dropdown-item" @click="showDropdown = false">
+                API Key 管理
+              </router-link>
+              <div class="dropdown-item dropdown-logout" @click="handleLogout">退出登录</div>
             </div>
           </div>
         </div>
@@ -44,7 +50,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
@@ -52,6 +58,20 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const showDropdown = ref(false);
+
+const isAiSection = computed(() => route.path.startsWith('/ai'));
+
+const switchTarget = computed(() => isAiSection.value ? '/' : '/ai/hd-white');
+const switchLabel = computed(() => isAiSection.value ? '← 切换到 AS 产品库' : '切换到 AS-AI →');
+
+const showSwitchButton = computed(() => {
+  // 如果当前是 AI 板块，检查用户有无产品库任何模块权限
+  // 如果当前是产品库板块，检查用户有无 as_ai 权限
+  if (isAiSection.value) {
+    return auth.hasModule('gallery') || auth.hasModule('products') || auth.hasModule('series') || auth.isAdmin;
+  }
+  return auth.hasModule('as_ai');
+});
 
 const vClickOutside = {
   mounted(el, binding) {
@@ -158,12 +178,6 @@ function handleLogout() {
   opacity: 0.85;
 }
 
-.nav-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .nav-username {
   font-size: 15px;
   color: var(--color-text-secondary);
@@ -267,5 +281,50 @@ function handleLogout() {
     height: 32px;
     font-size: 13px;
   }
+}
+
+.nav-switch-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.nav-switch {
+  font-size: 12px;
+  color: var(--color-text-secondary, #86868b);
+  text-decoration: none;
+  padding: 4px 12px;
+  border: 1px solid var(--color-border, #e5e5e7);
+  border-radius: 14px;
+  background: #fff;
+  transition: all 0.2s;
+}
+
+.nav-switch:hover {
+  border-color: #CF2028;
+  color: #CF2028;
+}
+
+.nav-user-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-link-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.nav-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+}
+
+@media (max-width: 768px) {
+  .nav-switch-wrap { display: none; }
 }
 </style>

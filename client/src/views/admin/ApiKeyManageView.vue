@@ -19,7 +19,7 @@
           <code class="key-mask">{{ row.api_key_masked }}</code>
         </template>
       </el-table-column>
-      <el-table-column prop="label" label="备注" width="160" show-overflow-tooltip />
+      <el-table-column prop="name" label="名称" width="160" show-overflow-tooltip />
       <el-table-column label="状态" width="80" align="center">
         <template #default="{ row }">
           <el-switch
@@ -74,8 +74,8 @@
             :placeholder="editingId ? '留空表示不修改' : '输入完整的 API Key'"
           />
         </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="form.label" placeholder="给这个 Key 起个名字，如「主力Gemini」" />
+        <el-form-item label="名称">
+          <el-input v-model="form.name" placeholder="给这个 Key 起个名字，如「Nano Banana 2」" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -122,7 +122,7 @@ const loading = ref(false);
 const dialogVisible = ref(false);
 const editingId = ref(null);
 const saving = ref(false);
-const form = ref({ provider: 'gemini', model_name: '', api_key: '', label: '' });
+const form = ref({ provider: 'gemini', model_name: '', api_key: '', name: '' });
 
 const testingId = ref(null);
 const testResultVisible = ref(false);
@@ -170,11 +170,11 @@ function openDialog(row = null) {
       provider: row.provider,
       model_name: row.model_name,
       api_key: '',
-      label: row.label || '',
+      name: row.name || '',
     };
   } else {
     editingId.value = null;
-    form.value = { provider: 'gemini', model_name: '', api_key: '', label: '' };
+    form.value = { provider: 'gemini', model_name: '', api_key: '', name: '' };
   }
   dialogVisible.value = true;
 }

@@ -9,6 +9,12 @@ const routes = [
     meta: { guest: true },
   },
   {
+    path: '/choose',
+    name: 'Choose',
+    component: () => import('../views/ChooseView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/',
     component: () => import('../layouts/MainLayout.vue'),
     meta: { requiresAuth: true },
@@ -49,6 +55,26 @@ const routes = [
         component: () => import('../views/admin/ApiKeyManageView.vue'),
         meta: { requiredRole: ['super_admin'] },
       },
+      {
+        path: 'ai/hd-white',
+        name: 'AiHdWhite',
+        component: () => import('../views/ai/HdWhiteView.vue'),
+        meta: { requiredModule: 'as_ai' },
+      },
+      {
+        path: 'ai/feature-2',
+        name: 'AiFeature2',
+        component: () => import('../views/ai/FeaturePlaceholderView.vue'),
+        meta: { requiredModule: 'as_ai' },
+        props: { featureName: '功能二' },
+      },
+      {
+        path: 'ai/feature-3',
+        name: 'AiFeature3',
+        component: () => import('../views/ai/FeaturePlaceholderView.vue'),
+        meta: { requiredModule: 'as_ai' },
+        props: { featureName: '功能三' },
+      },
     ],
   },
 ];
@@ -65,7 +91,7 @@ router.beforeEach((to, from, next) => {
     return next('/login');
   }
   if (to.meta.guest && auth.isLoggedIn) {
-    return next('/');
+    return next('/choose');
   }
   if (to.meta.requiredRole) {
     if (!to.meta.requiredRole.includes(auth.user?.role)) {

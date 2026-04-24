@@ -68,6 +68,7 @@
             <el-checkbox label="gallery">产品图库</el-checkbox>
             <el-checkbox label="products">产品管理</el-checkbox>
             <el-checkbox label="series">系列管理</el-checkbox>
+            <el-checkbox label="as_ai">AS-AI</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
       </el-form>
@@ -178,7 +179,7 @@ function roleTagType(role) {
 }
 
 function moduleLabel(mod) {
-  const map = { gallery: '产品图库', products: '产品管理', series: '系列管理' };
+  const map = { gallery: '产品图库', products: '产品管理', series: '系列管理', as_ai: 'AS-AI' };
   return map[mod] || mod;
 }
 

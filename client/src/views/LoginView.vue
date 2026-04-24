@@ -75,7 +75,7 @@ async function handleLogin() {
     const res = await login(form);
     auth.setAuth(res.token, res.user);
     ElMessage.success(`欢迎回来，${res.user.displayName}`);
-    router.push('/');
+    router.push('/choose');
   } catch (err) {
     // 错误已在拦截器中处理
   } finally {
