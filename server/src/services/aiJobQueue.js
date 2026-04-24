@@ -1,4 +1,4 @@
-const MAX_CONCURRENT = 3;
+const MAX_CONCURRENT = 1;
 const queue = [];
 let running = 0;
 

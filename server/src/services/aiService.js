@@ -85,8 +85,14 @@ async function callAI(provider, modelName, apiKey, prompt) {
   }
 }
 
-async function callGeminiImage(modelName, apiKey, prompt, originalImageBase64, mimeType = 'image/jpeg') {
+async function callGeminiImage(modelName, apiKey, prompt, originalImageBase64, mimeType = 'image/jpeg', aspectRatio = '') {
   const url = `${config.aiProxy.baseUrl}/gemini/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  const generationConfig = {
+    responseModalities: ['TEXT', 'IMAGE'],
+  };
+  if (aspectRatio) {
+    generationConfig.imageConfig = { aspectRatio };
+  }
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -100,6 +106,7 @@ async function callGeminiImage(modelName, apiKey, prompt, originalImageBase64, m
           { inline_data: { mime_type: mimeType, data: originalImageBase64 } }
         ]
       }],
+      generationConfig,
     }),
   });
   const data = await res.json();
@@ -107,13 +114,14 @@ async function callGeminiImage(modelName, apiKey, prompt, originalImageBase64, m
     throw new Error(data?.error?.message || `HTTP ${res.status}`);
   }
   const parts = data?.candidates?.[0]?.content?.parts || [];
-  const imgPart = parts.find(p => p.inline_data?.data);
+  const imgPart = parts.find(p => (p.inlineData?.data) || (p.inline_data?.data));
   if (!imgPart) {
     throw new Error('AI 未返回图片数据');
   }
+  const inline = imgPart.inlineData || imgPart.inline_data;
   return {
-    base64: imgPart.inline_data.data,
-    mimeType: imgPart.inline_data.mime_type || 'image/png',
+    base64: inline.data,
+    mimeType: inline.mimeType || inline.mime_type || 'image/png',
   };
 }
 

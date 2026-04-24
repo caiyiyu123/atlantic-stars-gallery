@@ -22,46 +22,83 @@
         value-format="YYYY-MM-DD"
         @change="onDateChange"
       />
+      <el-button @click="refetch">刷新</el-button>
     </div>
 
-    <div v-loading="loading" class="grid">
-      <div v-for="job in list" :key="job.id" class="card" @click="preview(job)">
-        <div class="img-wrap">
-          <img v-if="job.status === 'success'" :src="toUrl(job.result_image_path)" />
-          <div v-else class="fail-placeholder">
-            <span>{{ job.status === 'failed' ? '❌ 失败' : job.status }}</span>
+    <div v-loading="loading">
+      <div v-if="!loading && batches.length === 0" class="empty">暂无记录</div>
+
+      <el-collapse v-model="expandedBatches" class="batch-list">
+        <el-collapse-item
+          v-for="batch in batches"
+          :key="batch.batch_id"
+          :name="batch.batch_id"
+        >
+          <template #title>
+            <div class="batch-title">
+              <div class="batch-main">
+                <span class="batch-time">{{ formatTime(batch.created_at) }}</span>
+                <span class="batch-summary">
+                  {{ batch.jobs.length }} 张结果
+                  <el-tag v-if="batch.successCount" type="success" size="small" class="tag-inline">✓ {{ batch.successCount }}</el-tag>
+                  <el-tag v-if="batch.failedCount" type="danger" size="small" class="tag-inline">✗ {{ batch.failedCount }}</el-tag>
+                  <el-tag v-if="batch.processingCount" type="warning" size="small" class="tag-inline">⏳ {{ batch.processingCount }}</el-tag>
+                </span>
+              </div>
+              <div class="batch-models">
+                <span v-if="batch.promptTemplateName" class="prompt-badge" :title="`Prompt 模板：${batch.promptTemplateName}`">
+                  {{ batch.promptTemplateName }}
+                </span>
+                <span v-for="m in batch.modelNames" :key="m" class="model-badge">{{ m }}</span>
+                <button class="batch-delete" @click.stop="handleDeleteBatch(batch)" title="删除整个批次">删除</button>
+              </div>
+            </div>
+          </template>
+
+          <div class="batch-grid">
+            <!-- 原图（每张去重后作为第一批卡片） -->
+            <div
+              v-for="(orig, idx) in batch.originalImages"
+              :key="`orig-${batch.batch_id}-${idx}`"
+              class="card card-original"
+              @click="previewImage(orig)"
+            >
+              <div class="img-wrap">
+                <img :src="toUrl(orig)" />
+                <span class="badge-original">原图</span>
+              </div>
+              <div class="card-info">
+                <div class="model-name">原图</div>
+                <a href="javascript:;" class="download" @click.stop="downloadFile(orig)">下载</a>
+              </div>
+            </div>
+
+            <!-- 结果图 -->
+            <div v-for="job in batch.jobs" :key="job.id" class="card" @click="previewJobImage(job)">
+              <div class="img-wrap">
+                <img v-if="job.status === 'success'" :src="toUrl(job.result_image_path)" />
+                <div v-else class="fail-placeholder">
+                  <span>{{ job.status === 'failed' ? '❌ 失败' : (job.status === 'processing' ? '⏳ 处理中' : job.status) }}</span>
+                </div>
+              </div>
+              <div class="card-info">
+                <div class="model-name" :title="job.model_name">{{ job.api_key_name || job.model_name }}</div>
+                <a v-if="job.status === 'success'" href="javascript:;" class="download" @click.stop="downloadFile(job.result_image_path)">下载</a>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="card-info">
-          <div class="model-name">{{ job.model_name }}</div>
-          <div class="time">{{ formatTime(job.created_at) }}</div>
-          <a v-if="job.status === 'success'" :href="toUrl(job.result_image_path)" target="_blank" download class="download" @click.stop>下载</a>
-        </div>
-      </div>
+        </el-collapse-item>
+      </el-collapse>
     </div>
 
-    <div v-if="pagination.totalPages > 1" class="pagination">
-      <el-pagination
-        v-model:current-page="pagination.page"
-        :page-size="pagination.limit"
-        :total="pagination.total"
-        layout="prev, pager, next"
-        @current-change="onPageChange"
-      />
+    <div v-if="hasMore" class="load-more">
+      <el-button @click="loadMore" :loading="loading">加载更多</el-button>
     </div>
 
-    <!-- 大图预览 -->
+    <!-- 大图预览（单图） -->
     <el-dialog v-model="previewVisible" width="80%">
-      <div v-if="previewJob" class="preview-compare">
-        <div class="compare-col">
-          <div class="compare-label">原图</div>
-          <img :src="toUrl(previewJob.original_image_path)" class="compare-img" />
-        </div>
-        <div class="compare-col">
-          <div class="compare-label">结果</div>
-          <img v-if="previewJob.result_image_path" :src="toUrl(previewJob.result_image_path)" class="compare-img" />
-          <div v-else class="error-msg">{{ previewJob.error_message || '未生成结果' }}</div>
-        </div>
+      <div class="preview-single">
+        <img v-if="previewUrl" :src="previewUrl" class="preview-img" />
       </div>
     </el-dialog>
   </div>
@@ -69,16 +106,19 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { useAuthStore } from '../../../stores/auth';
-import { getJobHistory, getJobUsers } from '../../../api/aiJobs';
+import { getJobHistory, getJobUsers, deleteBatch } from '../../../api/aiJobs';
 import { getApiKeys } from '../../../api/apiKeys';
 
 const auth = useAuthStore();
 const BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/api$/, '') || 'http://localhost:3000';
 
-const list = ref([]);
+const rawJobs = ref([]);
 const loading = ref(false);
-const pagination = reactive({ page: 1, limit: 24, total: 0, totalPages: 0 });
+const currentPage = ref(1);
+const pageSize = 100;
+const totalPages = ref(1);
 
 const filter = reactive({ user_id: '', model_name: '', status: '', date_from: '', date_to: '' });
 const dateRange = ref(null);
@@ -87,10 +127,73 @@ const userList = ref([]);
 const modelList = ref([]);
 
 const previewVisible = ref(false);
-const previewJob = ref(null);
+const previewUrl = ref('');
+
+const expandedBatches = ref([]); // 展开的 batch_id 列表
+
+const batches = computed(() => {
+  const map = new Map();
+  for (const job of rawJobs.value) {
+    if (!map.has(job.batch_id)) {
+      map.set(job.batch_id, {
+        batch_id: job.batch_id,
+        created_at: job.created_at,
+        jobs: [],
+        modelNames: new Set(),
+        originalImages: new Set(),
+      });
+    }
+    const b = map.get(job.batch_id);
+    b.jobs.push(job);
+    b.modelNames.add(job.api_key_name || job.model_name);
+    if (job.original_image_path) b.originalImages.add(job.original_image_path);
+    if (job.prompt_template_name && !b.promptTemplateName) {
+      b.promptTemplateName = job.prompt_template_name;
+    }
+    if (new Date(job.created_at) < new Date(b.created_at)) {
+      b.created_at = job.created_at;
+    }
+  }
+  const arr = [...map.values()].map(b => {
+    const successCount = b.jobs.filter(j => j.status === 'success').length;
+    const failedCount = b.jobs.filter(j => j.status === 'failed').length;
+    const processingCount = b.jobs.filter(j => j.status === 'pending' || j.status === 'processing').length;
+    return {
+      ...b,
+      modelNames: [...b.modelNames],
+      originalImages: [...b.originalImages],
+      successCount,
+      failedCount,
+      processingCount,
+    };
+  });
+  arr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  return arr;
+});
+
+const hasMore = computed(() => currentPage.value < totalPages.value);
 
 function toUrl(relPath) {
   return relPath.startsWith('http') ? relPath : `${BASE_URL}/${relPath}`;
+}
+
+async function downloadFile(relPath) {
+  try {
+    const res = await fetch(toUrl(relPath));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = relPath.split('/').pop() || 'image.jpg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
+  } catch (e) {
+    // 失败静默，因为全局 axios 拦截器不处理这种直接 fetch
+    console.error('下载失败:', e);
+  }
 }
 
 function formatTime(t) {
@@ -99,19 +202,33 @@ function formatTime(t) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-async function fetchList() {
+async function fetchList(reset = false) {
   loading.value = true;
   try {
-    const params = { page: pagination.page, limit: pagination.limit };
+    if (reset) {
+      currentPage.value = 1;
+      rawJobs.value = [];
+      expandedBatches.value = [];
+    }
+    const params = { page: currentPage.value, limit: pageSize };
     if (filter.user_id) params.user_id = filter.user_id;
     if (filter.model_name) params.model_name = filter.model_name;
     if (filter.status) params.status = filter.status;
     if (filter.date_from) params.date_from = filter.date_from;
     if (filter.date_to) params.date_to = filter.date_to;
     const res = await getJobHistory(params);
-    list.value = res.data;
-    Object.assign(pagination, res.pagination);
+    rawJobs.value = reset ? res.data : [...rawJobs.value, ...res.data];
+    totalPages.value = res.pagination.totalPages;
+    // 默认展开第一个批次
+    if (reset && batches.value.length > 0) {
+      expandedBatches.value = [batches.value[0].batch_id];
+    }
   } finally { loading.value = false; }
+}
+
+function loadMore() {
+  currentPage.value++;
+  fetchList(false);
 }
 
 function onDateChange(val) {
@@ -126,22 +243,37 @@ function onDateChange(val) {
 }
 
 function refetch() {
-  pagination.page = 1;
-  fetchList();
+  fetchList(true);
 }
 
-function onPageChange(p) {
-  pagination.page = p;
-  fetchList();
-}
-
-function preview(job) {
-  previewJob.value = job;
+function previewImage(path) {
+  if (!path) return;
+  previewUrl.value = toUrl(path);
   previewVisible.value = true;
 }
 
+function previewJobImage(job) {
+  if (job.status !== 'success') return;
+  previewImage(job.result_image_path);
+}
+
+async function handleDeleteBatch(batch) {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除这个批次？将同时删除 ${batch.jobs.length} 张结果图和对应的原图，此操作不可恢复。`,
+      '确认删除',
+      { type: 'warning' }
+    );
+  } catch (e) { return; }
+  try {
+    await deleteBatch(batch.batch_id);
+    ElMessage.success('批次已删除');
+    rawJobs.value = rawJobs.value.filter(j => j.batch_id !== batch.batch_id);
+    expandedBatches.value = expandedBatches.value.filter(id => id !== batch.batch_id);
+  } catch (e) { /* 错误由拦截器提示 */ }
+}
+
 onMounted(async () => {
-  // 拉 Key 列表做模型筛选
   try {
     const keys = await getApiKeys();
     modelList.value = [...new Set(keys.map(k => k.model_name))];
@@ -152,34 +284,121 @@ onMounted(async () => {
       userList.value = await getJobUsers();
     } catch (e) { /* ignore */ }
   }
-  fetchList();
+  fetchList(true);
 });
 </script>
 
 <style scoped>
-.filter-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.filter-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+
+.empty { text-align: center; color: #86868b; padding: 60px 0; font-size: 14px; }
+
+.batch-list :deep(.el-collapse-item__header) {
+  height: auto;
+  padding: 12px 0;
+}
+
+.batch-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding-right: 8px;
+}
+.batch-main { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0; }
+.batch-time { font-weight: 600; color: #1d1d1f; white-space: nowrap; }
+.batch-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #86868b;
+  font-size: 13px;
+}
+.tag-inline { margin-left: 4px; }
+.batch-models {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.model-badge {
+  font-size: 12px;
+  color: #86868b;
+  background: #f5f5f7;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.prompt-badge {
+  font-size: 12px;
+  color: #8a6a08;
+  background: #fff8e1;
+  padding: 2px 10px;
+  border-radius: 10px;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.batch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 8px 0 16px;
+}
+
 .card {
   background: #fff;
   border: 1px solid #e5e5e7;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
 }
-.card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+.card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
 .img-wrap { aspect-ratio: 1; background: #f5f5f7; }
 .img-wrap img { width: 100%; height: 100%; object-fit: contain; }
-.fail-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #c9302c; }
-.card-info { padding: 10px 12px; }
-.model-name { font-size: 13px; font-weight: 500; color: #1d1d1f; }
-.time { font-size: 12px; color: #86868b; margin: 4px 0; }
-.download { font-size: 12px; color: #CF2028; text-decoration: none; }
-.pagination { display: flex; justify-content: center; margin-top: 20px; }
 
-.preview-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.compare-col { text-align: center; }
-.compare-label { font-weight: 500; margin-bottom: 8px; }
-.compare-img { max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px; }
-.error-msg { color: #c9302c; padding: 20px; }
+.batch-delete {
+  border: 1px solid rgba(229, 62, 62, 0.4);
+  background: transparent;
+  color: #e53e3e;
+  font-size: 12px;
+  padding: 3px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: all 0.2s;
+}
+.batch-delete:hover {
+  background: #e53e3e;
+  color: #fff;
+  border-color: #e53e3e;
+}
+.fail-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #c9302c; font-size: 13px; }
+.card-info { padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; }
+.model-name { font-size: 12px; color: #86868b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+.download { font-size: 12px; color: #CF2028; text-decoration: none; font-weight: 500; }
+
+.load-more { display: flex; justify-content: center; margin-top: 20px; }
+
+.card-original { border-color: #ffd666; background: #fff8e1; }
+.img-wrap { position: relative; }
+.badge-original {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: #ffc53d;
+  color: #1d1d1f;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.preview-single { display: flex; justify-content: center; align-items: center; }
+.preview-img { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 8px; }
 </style>

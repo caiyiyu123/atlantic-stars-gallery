@@ -41,9 +41,28 @@ async function processJob(jobId) {
     const origExt = path.extname(absOriginal).toLowerCase();
     const origMime = origExt === '.png' ? 'image/png' : origExt === '.webp' ? 'image/webp' : 'image/jpeg';
 
-    // 调用 AI
+    // 比例为空时不追加提示词、不传 API 参数；选了才加
+    const ratio = job.aspect_ratio || '';
+    const finalPrompt = ratio
+      ? `${job.prompt_snapshot}\n\n严格要求图片比例为 ${ratio}`
+      : job.prompt_snapshot;
+
+    // 打印到后端终端，方便验证
+    console.log(`\n===== [AI Job ${jobId}] 发送给 Gemini 的完整 prompt =====`);
+    console.log(`模型: ${keyRow.model_name}  比例参数: ${ratio || '(未指定)'}`);
+    console.log('---- prompt 文本 ----');
+    console.log(finalPrompt);
+    console.log('===== prompt 结束 =====\n');
+
+    // 更新 DB 里的 prompt_snapshot 为实际发送的完整 prompt（方便历史追溯）
+    await pool.query(
+      'UPDATE ai_image_jobs SET prompt_snapshot = ? WHERE id = ?',
+      [finalPrompt, jobId]
+    );
+
+    // 调用 AI（ratio 为空不传 aspectRatio）
     const { base64: resultBase64, mimeType } = await callGeminiImage(
-      keyRow.model_name, keyRow.api_key, job.prompt_snapshot, base64, origMime
+      keyRow.model_name, keyRow.api_key, finalPrompt, base64, origMime, ratio
     );
 
     // 保存结果

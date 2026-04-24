@@ -6,31 +6,21 @@
       <p class="choose-subtitle">请选择要进入的板块</p>
 
       <div class="choose-grid">
-        <div
-          class="choose-card"
-          :class="{ disabled: !hasGallery }"
+        <article
+          class="card card-gallery"
+          :class="{ locked: !hasGallery }"
           @click="enter('gallery')"
         >
-          <div class="choose-icon">📦</div>
-          <div class="choose-card-title">AS 产品库</div>
-          <div class="choose-card-desc">查看和管理产品图片、系列、用户</div>
-          <div class="choose-card-cta">
-            {{ hasGallery ? '进入 →' : '暂无权限' }}
-          </div>
-        </div>
+          <h3 class="card-title">AS 产品库</h3>
+        </article>
 
-        <div
-          class="choose-card"
-          :class="{ disabled: !hasAsAi }"
+        <article
+          class="card card-ai"
+          :class="{ locked: !hasAsAi }"
           @click="enter('as_ai')"
         >
-          <div class="choose-icon">🤖</div>
-          <div class="choose-card-title">AS-AI</div>
-          <div class="choose-card-desc">AI 高清白底图（更多功能开发中）</div>
-          <div class="choose-card-cta">
-            {{ hasAsAi ? '进入 →' : '暂无权限' }}
-          </div>
-        </div>
+          <h3 class="card-title">AS-AI</h3>
+        </article>
       </div>
     </div>
   </div>
@@ -75,7 +65,7 @@ function enter(section) {
 }
 
 .choose-logo {
-  height: 80px;
+  height: 140px;
   margin-bottom: 24px;
 }
 
@@ -92,62 +82,63 @@ function enter(section) {
   margin: 0 0 40px 0;
 }
 
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&display=swap');
+
 .choose-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.card {
+  position: relative;
+  padding: 22px 44px;
+  border-radius: 999px;
+  cursor: pointer;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 220px;
+  transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1),
+              box-shadow 0.5s ease,
+              letter-spacing 0.5s ease;
+  font-family: 'Fraunces', Georgia, serif;
+}
+
+.card-gallery {
+  background: linear-gradient(135deg, #2d4a3e 0%, #0f2520 100%);
+  color: #f5efdc;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+.card-ai {
+  background: linear-gradient(135deg, #6b2322 0%, #2a0808 100%);
+  color: #fff5e1;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.card:not(.locked):hover { transform: translateY(-3px); }
+.card-gallery:not(.locked):hover { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4); }
+.card-ai:not(.locked):hover { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45); }
+
+.card-title {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin: 0;
+  transition: letter-spacing 0.5s ease;
+}
+.card:not(.locked):hover .card-title { letter-spacing: 0.1em; }
+
+.card.locked {
+  cursor: not-allowed;
+  filter: grayscale(0.55) brightness(0.85);
+  opacity: 0.55;
 }
 
 @media (max-width: 640px) {
-  .choose-grid { grid-template-columns: 1fr; }
-}
-
-.choose-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 40px 32px;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.choose-card:not(.disabled):hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
-}
-
-.choose-card.disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.choose-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-}
-
-.choose-card-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #1d1d1f;
-  margin-bottom: 8px;
-}
-
-.choose-card-desc {
-  font-size: 14px;
-  color: #86868b;
-  margin-bottom: 24px;
-  min-height: 40px;
-}
-
-.choose-card-cta {
-  font-size: 15px;
-  font-weight: 600;
-  color: #CF2028;
-}
-
-.choose-card.disabled .choose-card-cta {
-  color: #86868b;
+  .choose-grid { flex-direction: column; align-items: center; }
+  .card { width: 100%; max-width: 280px; }
 }
 </style>

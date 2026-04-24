@@ -84,6 +84,13 @@ router.post('/', auth, requireModule('as_ai'), upload.array('files', 10), async 
       return res.status(400).json({ message: `总任务数 ${totalJobs} 超过上限 50，请减少图片或模型数量` });
     }
 
+    // 校验图片尺寸（空表示不指定，不加约束）
+    const VALID_RATIOS = ['1:1', '4:3', '3:4'];
+    const aspectRatio = req.body.aspect_ratio || '';
+    if (aspectRatio && !VALID_RATIOS.includes(aspectRatio)) {
+      return res.status(400).json({ message: '无效的图片尺寸' });
+    }
+
     // 取默认 prompt 模板
     const [tpls] = await pool.query('SELECT * FROM prompt_templates WHERE is_default = 1 LIMIT 1');
     if (tpls.length === 0) {
@@ -102,9 +109,9 @@ router.post('/', auth, requireModule('as_ai'), upload.array('files', 10), async 
         for (let i = 0; i < m.count; i++) {
           const [result] = await pool.query(
             `INSERT INTO ai_image_jobs
-             (user_id, batch_id, api_key_id, model_name, prompt_template_id, prompt_snapshot, original_image_path, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
-            [req.user.id, batchId, keyRow.id, keyRow.model_name, tpl.id, tpl.content, relOrig]
+             (user_id, batch_id, api_key_id, model_name, prompt_template_id, prompt_snapshot, aspect_ratio, original_image_path, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+            [req.user.id, batchId, keyRow.id, keyRow.model_name, tpl.id, tpl.content, aspectRatio, relOrig]
           );
           jobIds.push(result.insertId);
         }
@@ -163,19 +170,28 @@ router.get('/history', auth, requireModule('as_ai'), async (req, res, next) => {
       userId = parseInt(req.query.user_id, 10);
     }
 
-    const where = ['user_id = ?'];
+    const where = ['j.user_id = ?'];
     const params = [userId];
-    if (req.query.model_name) { where.push('model_name = ?'); params.push(req.query.model_name); }
-    if (req.query.status) { where.push('status = ?'); params.push(req.query.status); }
-    if (req.query.date_from) { where.push('created_at >= ?'); params.push(req.query.date_from); }
-    if (req.query.date_to) { where.push('created_at <= ?'); params.push(req.query.date_to); }
+    if (req.query.model_name) { where.push('j.model_name = ?'); params.push(req.query.model_name); }
+    if (req.query.status) { where.push('j.status = ?'); params.push(req.query.status); }
+    if (req.query.date_from) { where.push('j.created_at >= ?'); params.push(req.query.date_from); }
+    if (req.query.date_to) { where.push('j.created_at <= ?'); params.push(req.query.date_to); }
 
     const whereSql = where.join(' AND ');
-    const [countRows] = await pool.query(`SELECT COUNT(*) AS total FROM ai_image_jobs WHERE ${whereSql}`, params);
+    const [countRows] = await pool.query(
+      `SELECT COUNT(*) AS total FROM ai_image_jobs j WHERE ${whereSql}`,
+      params
+    );
     const total = countRows[0].total;
     const [rows] = await pool.query(
-      `SELECT id, batch_id, model_name, original_image_path, result_image_path, status, error_message, duration_ms, created_at
-       FROM ai_image_jobs WHERE ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT j.id, j.batch_id, j.api_key_id, j.model_name, j.original_image_path, j.result_image_path,
+              j.status, j.error_message, j.duration_ms, j.created_at,
+              k.name AS api_key_name,
+              t.name AS prompt_template_name
+       FROM ai_image_jobs j
+       LEFT JOIN api_keys k ON k.id = j.api_key_id
+       LEFT JOIN prompt_templates t ON t.id = j.prompt_template_id
+       WHERE ${whereSql} ORDER BY j.created_at DESC LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
     res.json({
@@ -201,6 +217,68 @@ router.post('/:id/retry', auth, requireModule('as_ai'), async (req, res, next) =
     await pool.query('UPDATE ai_image_jobs SET status = ?, error_message = ? WHERE id = ?', ['pending', '', id]);
     enqueue(id, processJob);
     res.json({ message: '已重新提交' });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/ai-jobs/batch/:batchId - 删除整个批次
+router.delete('/batch/:batchId', auth, requireModule('as_ai'), async (req, res, next) => {
+  try {
+    const batchId = req.params.batchId;
+    const [jobs] = await pool.query('SELECT * FROM ai_image_jobs WHERE batch_id = ?', [batchId]);
+    if (jobs.length === 0) return res.status(404).json({ message: '批次不存在' });
+
+    const ownerId = jobs[0].user_id;
+    if (req.user.role !== 'super_admin' && ownerId !== req.user.id) {
+      return res.status(403).json({ message: '只能删除自己的批次' });
+    }
+
+    // 收集所有要删的文件（原图去重）
+    const filePaths = new Set();
+    for (const job of jobs) {
+      if (job.result_image_path) filePaths.add(job.result_image_path);
+      if (job.original_image_path) filePaths.add(job.original_image_path);
+    }
+    for (const rel of filePaths) {
+      try {
+        const absPath = path.resolve(uploadsDir, path.relative('uploads', rel));
+        if (absPath.startsWith(uploadsDir) && fs.existsSync(absPath)) {
+          fs.unlinkSync(absPath);
+        }
+      } catch (e) {
+        console.error('删除文件失败:', e.message);
+      }
+    }
+
+    await pool.query('DELETE FROM ai_image_jobs WHERE batch_id = ?', [batchId]);
+    logOperation(req, '删除AI批次', `批次: ${batchId}, 任务数: ${jobs.length}`);
+    res.json({ message: '批次删除成功', count: jobs.length });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/ai-jobs/:id
+router.delete('/:id', auth, requireModule('as_ai'), async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const [rows] = await pool.query('SELECT * FROM ai_image_jobs WHERE id = ?', [id]);
+    if (rows.length === 0) return res.status(404).json({ message: '不存在' });
+    const job = rows[0];
+    if (req.user.role !== 'super_admin' && job.user_id !== req.user.id) {
+      return res.status(403).json({ message: '只能删除自己的任务' });
+    }
+    // 删除结果文件（原图可能被同批次其他 job 共享，不删）
+    if (job.result_image_path) {
+      try {
+        const absPath = path.resolve(uploadsDir, path.relative('uploads', job.result_image_path));
+        if (absPath.startsWith(uploadsDir) && fs.existsSync(absPath)) {
+          fs.unlinkSync(absPath);
+        }
+      } catch (e) {
+        console.error('删除结果文件失败:', e.message);
+      }
+    }
+    await pool.query('DELETE FROM ai_image_jobs WHERE id = ?', [id]);
+    logOperation(req, '删除AI任务', `ID: ${id}`);
+    res.json({ message: '删除成功' });
   } catch (err) { next(err); }
 });
 

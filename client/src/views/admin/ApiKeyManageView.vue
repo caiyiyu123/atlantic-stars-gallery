@@ -13,13 +13,13 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="model_name" label="模型名称" width="170" show-overflow-tooltip />
+      <el-table-column prop="model_name" label="模型 ID" width="170" show-overflow-tooltip />
       <el-table-column label="API Key" width="170">
         <template #default="{ row }">
           <code class="key-mask">{{ row.api_key_masked }}</code>
         </template>
       </el-table-column>
-      <el-table-column prop="name" label="名称" width="160" show-overflow-tooltip />
+      <el-table-column prop="name" label="模型名称" width="160" show-overflow-tooltip />
       <el-table-column label="状态" width="80" align="center">
         <template #default="{ row }">
           <el-switch
@@ -63,7 +63,7 @@
             <el-option label="Anthropic Claude" value="claude" />
           </el-select>
         </el-form-item>
-        <el-form-item label="模型名称">
+        <el-form-item label="模型 ID">
           <el-input v-model="form.model_name" :placeholder="modelPlaceholder" />
         </el-form-item>
         <el-form-item label="API Key">
@@ -74,7 +74,7 @@
             :placeholder="editingId ? '留空表示不修改' : '输入完整的 API Key'"
           />
         </el-form-item>
-        <el-form-item label="名称">
+        <el-form-item label="模型名称">
           <el-input v-model="form.name" placeholder="给这个 Key 起个名字，如「Nano Banana 2」" />
         </el-form-item>
       </el-form>
@@ -181,7 +181,7 @@ function openDialog(row = null) {
 
 async function handleSave() {
   if (!form.value.provider || !form.value.model_name) {
-    return ElMessage.warning('请填写服务商和模型名称');
+    return ElMessage.warning('请填写服务商和模型 ID');
   }
   if (!editingId.value && !form.value.api_key) {
     return ElMessage.warning('请输入 API Key');

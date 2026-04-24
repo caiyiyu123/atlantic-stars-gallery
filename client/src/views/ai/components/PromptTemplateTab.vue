@@ -5,20 +5,25 @@
     </div>
 
     <el-table :data="list" v-loading="loading" style="width: 100%;">
+      <el-table-column type="expand">
+        <template #default="{ row }">
+          <div class="full-prompt">{{ row.content }}</div>
+        </template>
+      </el-table-column>
       <el-table-column prop="name" label="名称" width="200" />
       <el-table-column label="Prompt 内容" min-width="300">
         <template #default="{ row }">
           <div class="prompt-preview">{{ row.content.slice(0, 80) }}{{ row.content.length > 80 ? '...' : '' }}</div>
         </template>
       </el-table-column>
-      <el-table-column label="默认" width="80" align="center">
+      <el-table-column label="默认" width="120" align="center">
         <template #default="{ row }">
-          <span v-if="row.is_default" class="star">⭐</span>
+          <span v-if="row.is_default" class="default-tag">默认模板</span>
+          <span v-else class="set-default-link" @click="handleSetDefault(row)">设为默认</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="260" align="center">
+      <el-table-column label="操作" width="180" align="center">
         <template #default="{ row }">
-          <el-button v-if="!row.is_default" text type="warning" @click="handleSetDefault(row)">设为默认</el-button>
           <el-button text type="primary" @click="openDialog(row)">编辑</el-button>
           <el-button text type="danger" :disabled="row.is_default" @click="handleDelete(row)">删除</el-button>
         </template>
@@ -110,5 +115,39 @@ onMounted(fetchList);
 <style scoped>
 .header-row { display: flex; justify-content: flex-end; margin-bottom: 16px; }
 .prompt-preview { color: #86868b; font-size: 13px; line-height: 1.5; }
-.star { font-size: 18px; }
+
+.full-prompt {
+  padding: 16px 24px;
+  background: #fafafa;
+  border-radius: 8px;
+  color: #1d1d1f;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.default-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #fff8e1;
+  color: #d48806;
+  border: 1px solid #ffd666;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.set-default-link {
+  color: #e53e3e;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.set-default-link:hover {
+  color: #c9302c;
+  text-decoration: underline;
+}
 </style>
