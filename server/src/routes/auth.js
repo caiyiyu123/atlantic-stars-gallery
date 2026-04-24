@@ -45,7 +45,7 @@ router.post('/login', loginLimiter, async (req, res, next) => {
       { expiresIn: config.jwt.expiresIn }
     );
 
-    let permissions = ['gallery', 'products', 'series'];
+    let permissions = ['gallery', 'products', 'series', 'as_ai'];
     if (user.role === 'operator') {
       const [perms] = await pool.query(
         'SELECT module FROM user_permissions WHERE user_id = ?',

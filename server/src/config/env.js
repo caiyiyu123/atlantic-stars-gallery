@@ -26,4 +26,8 @@ module.exports = {
     cdnDomain: process.env.COS_CDN_DOMAIN,
     appId: process.env.COS_APP_ID,
   },
+  aiProxy: {
+    baseUrl: process.env.AI_PROXY_BASE_URL || '',
+    token: process.env.AI_PROXY_TOKEN || '',
+  },
 };

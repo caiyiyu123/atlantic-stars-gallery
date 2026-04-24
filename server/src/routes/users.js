@@ -71,7 +71,7 @@ router.post('/', auth, canManageUsers, async (req, res, next) => {
         [username, hash, role, username]
       );
       if (role === 'operator' && Array.isArray(permissions) && permissions.length > 0) {
-        const validModules = ['gallery', 'products', 'series'];
+        const validModules = ['gallery', 'products', 'series', 'as_ai'];
         for (const mod of permissions.filter(p => validModules.includes(p))) {
           await conn.query('INSERT INTO user_permissions (user_id, module) VALUES (?, ?)', [result.insertId, mod]);
         }
@@ -124,7 +124,7 @@ router.put('/:id', auth, canManageUsers, async (req, res, next) => {
       const finalRole = role || targetRole;
       if (finalRole === 'operator' && Array.isArray(permissions)) {
         await conn.query('DELETE FROM user_permissions WHERE user_id = ?', [targetId]);
-        const validModules = ['gallery', 'products', 'series'];
+        const validModules = ['gallery', 'products', 'series', 'as_ai'];
         for (const mod of permissions.filter(p => validModules.includes(p))) {
           await conn.query('INSERT INTO user_permissions (user_id, module) VALUES (?, ?)', [targetId, mod]);
         }

@@ -30,6 +30,9 @@
             <router-link v-if="auth.isAdmin" to="/admin/users" class="dropdown-item" @click="showDropdown = false">
               用户管理
             </router-link>
+            <router-link v-if="auth.isSuperAdmin" to="/admin/api-keys" class="dropdown-item" @click="showDropdown = false">
+              API Key 管理
+            </router-link>
             <div class="dropdown-item dropdown-logout" @click="handleLogout">
               退出登录
             </div>

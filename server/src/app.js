@@ -31,6 +31,9 @@ app.use('/api/products', require('./routes/products'));
 app.use('/api/images', require('./routes/images'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/logs', require('./routes/logs'));
+app.use('/api/api-keys', require('./routes/apiKeys'));
+app.use('/api/prompt-templates', require('./routes/promptTemplates'));
+app.use('/api/ai-jobs', require('./routes/aiJobs'));
 
 // Error handler
 app.use((err, req, res, next) => {

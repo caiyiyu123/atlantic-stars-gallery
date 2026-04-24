@@ -43,6 +43,12 @@ const routes = [
         component: () => import('../views/admin/UserManageView.vue'),
         meta: { requiredRole: ['super_admin', 'admin'] },
       },
+      {
+        path: 'admin/api-keys',
+        name: 'ApiKeyManage',
+        component: () => import('../views/admin/ApiKeyManageView.vue'),
+        meta: { requiredRole: ['super_admin'] },
+      },
     ],
   },
 ];
