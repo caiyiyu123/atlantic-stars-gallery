@@ -112,8 +112,6 @@ import { getJobHistory, getJobUsers, deleteBatch } from '../../../api/aiJobs';
 import { getApiKeys } from '../../../api/apiKeys';
 
 const auth = useAuthStore();
-const BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/api$/, '') || 'http://localhost:3000';
-
 const rawJobs = ref([]);
 const loading = ref(false);
 const currentPage = ref(1);
@@ -174,7 +172,9 @@ const batches = computed(() => {
 const hasMore = computed(() => currentPage.value < totalPages.value);
 
 function toUrl(relPath) {
-  return relPath.startsWith('http') ? relPath : `${BASE_URL}/${relPath}`;
+  if (!relPath) return '';
+  if (relPath.startsWith('http')) return relPath;
+  return relPath.startsWith('/') ? relPath : `/${relPath}`;
 }
 
 async function downloadFile(relPath) {

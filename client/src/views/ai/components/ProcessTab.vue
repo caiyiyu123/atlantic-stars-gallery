@@ -165,8 +165,6 @@ let pollTimer = null;
 const previewVisible = ref(false);
 const previewJob = ref(null);
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/api$/, '') || 'http://localhost:3000';
-
 const defaultKey = computed(() => allKeys.value.find(k => k.name === 'Nano Banana 2' && k.is_active));
 
 const availableExtraKeys = (currentId) => {
@@ -204,7 +202,9 @@ const allDone = computed(() =>
 );
 
 function toUrl(relPath) {
-  return relPath.startsWith('http') ? relPath : `${BASE_URL}/${relPath}`;
+  if (!relPath) return '';
+  if (relPath.startsWith('http')) return relPath;
+  return relPath.startsWith('/') ? relPath : `/${relPath}`;
 }
 
 async function downloadFile(relPath) {
