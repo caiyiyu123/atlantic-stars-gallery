@@ -158,4 +158,53 @@ async function callGeminiImage(modelName, apiKey, prompt, originalImageBase64, m
   };
 }
 
-module.exports = { callAI, callGeminiImage };
+/**
+ * 轻量连通性测试（不消耗配额）
+ * 通过各家的 list models 接口验证 API Key 与代理可达
+ */
+async function testConnectivity(provider, modelName, apiKey) {
+  if (!config.aiProxy.baseUrl || !config.aiProxy.token) {
+    throw new Error('AI 代理未配置');
+  }
+  if (provider === 'gemini') {
+    const url = `${config.aiProxy.baseUrl}/gemini/v1beta/models?key=${apiKey}`;
+    const res = await fetchWithRetry(url, {
+      method: 'GET',
+      headers: { 'X-Proxy-Token': config.aiProxy.token },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+    const models = data.models || [];
+    const hit = models.find(m => (m.name || '').endsWith(`/${modelName}`));
+    if (!hit) {
+      return `代理与 Key 可用；但当前账号未列出模型 ${modelName}（共 ${models.length} 个模型）`;
+    }
+    return `代理与 Key 可用；模型 ${modelName} 在列表中`;
+  }
+  if (provider === 'openai') {
+    const url = `${config.aiProxy.baseUrl}/openai/v1/models`;
+    const res = await fetchWithRetry(url, {
+      method: 'GET',
+      headers: {
+        'X-Proxy-Token': config.aiProxy.token,
+        'Authorization': `Bearer ${apiKey}`,
+      },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+    const models = data.data || [];
+    const hit = models.find(m => m.id === modelName);
+    if (!hit) {
+      return `代理与 Key 可用；但当前账号未列出模型 ${modelName}（共 ${models.length} 个模型）`;
+    }
+    return `代理与 Key 可用；模型 ${modelName} 在列表中`;
+  }
+  if (provider === 'claude') {
+    // Claude 没有 list models，用一次最小 messages 调用
+    const reply = await callClaude(modelName, apiKey, 'hi');
+    return `代理与 Key 可用；回复：${(reply || '').slice(0, 60)}`;
+  }
+  throw new Error(`不支持的服务商: ${provider}`);
+}
+
+module.exports = { callAI, callGeminiImage, testConnectivity };

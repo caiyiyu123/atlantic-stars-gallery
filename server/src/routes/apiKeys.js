@@ -3,7 +3,7 @@ const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const { requireRole } = require('../middleware/permission');
 const { logOperation } = require('../middleware/operationLog');
-const { callAI } = require('../services/aiService');
+const { testConnectivity } = require('../services/aiService');
 
 const router = express.Router();
 
@@ -133,7 +133,7 @@ router.post('/:id/test', auth, requireRole('super_admin'), async (req, res, next
     let errorMsg = '';
     let reply = '';
     try {
-      reply = await callAI(row.provider, row.model_name, row.api_key, '你好，请用一句话介绍你自己');
+      reply = await testConnectivity(row.provider, row.model_name, row.api_key);
     } catch (err) {
       status = 'failed';
       errorMsg = err.message.slice(0, 500);
