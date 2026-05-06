@@ -5,9 +5,42 @@ const config = require('../config/env');
  * 支持：gemini / openai / claude
  */
 
+const FETCH_TIMEOUT_MS = 180000; // 3 分钟（图像生成可能很慢）
+const MAX_RETRIES = 2;            // 网络错误最多重试 2 次（共 3 次尝试）
+const RETRY_DELAY_MS = 3000;      // 重试间隔 3 秒
+
+function describeFetchError(err) {
+  const msg = err?.message || '未知错误';
+  const cause = err?.cause;
+  if (cause?.code) return `${msg} (${cause.code})`;
+  if (cause?.message) return `${msg} (${cause.message.slice(0, 80)})`;
+  return msg;
+}
+
+async function fetchWithRetry(url, options) {
+  let lastErr;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const opts = { ...options, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) };
+      return await fetch(url, opts);
+    } catch (err) {
+      lastErr = err;
+      // AbortError（超时）也归入重试
+      const desc = describeFetchError(err);
+      if (attempt < MAX_RETRIES) {
+        console.warn(`[fetchWithRetry] 第 ${attempt + 1} 次失败：${desc}，${RETRY_DELAY_MS}ms 后重试...`);
+        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+      } else {
+        console.error(`[fetchWithRetry] 全部 ${MAX_RETRIES + 1} 次都失败：${desc}`);
+      }
+    }
+  }
+  throw new Error(`网络请求失败: ${describeFetchError(lastErr)}`);
+}
+
 async function callGemini(modelName, apiKey, prompt) {
   const url = `${config.aiProxy.baseUrl}/gemini/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: {
       'X-Proxy-Token': config.aiProxy.token,
@@ -27,7 +60,7 @@ async function callGemini(modelName, apiKey, prompt) {
 
 async function callOpenAI(modelName, apiKey, prompt) {
   const url = `${config.aiProxy.baseUrl}/openai/v1/chat/completions`;
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: {
       'X-Proxy-Token': config.aiProxy.token,
@@ -48,7 +81,7 @@ async function callOpenAI(modelName, apiKey, prompt) {
 
 async function callClaude(modelName, apiKey, prompt) {
   const url = `${config.aiProxy.baseUrl}/claude/v1/messages`;
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: {
       'X-Proxy-Token': config.aiProxy.token,
@@ -93,7 +126,7 @@ async function callGeminiImage(modelName, apiKey, prompt, originalImageBase64, m
   if (aspectRatio) {
     generationConfig.imageConfig = { aspectRatio };
   }
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: {
       'X-Proxy-Token': config.aiProxy.token,
