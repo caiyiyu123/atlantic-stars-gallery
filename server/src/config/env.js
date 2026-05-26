@@ -27,7 +27,15 @@ module.exports = {
     appId: process.env.COS_APP_ID,
   },
   aiProxy: {
+    enabled: process.env.AI_USE_PROXY
+      ? process.env.AI_USE_PROXY === 'true'
+      : Boolean(process.env.AI_PROXY_BASE_URL),
     baseUrl: process.env.AI_PROXY_BASE_URL || '',
     token: process.env.AI_PROXY_TOKEN || '',
+  },
+  ai: {
+    openaiBaseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+    geminiBaseUrl: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
+    claudeBaseUrl: process.env.CLAUDE_BASE_URL || 'https://api.anthropic.com/v1',
   },
 };

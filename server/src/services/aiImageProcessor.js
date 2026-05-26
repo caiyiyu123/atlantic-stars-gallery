@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const pool = require('../config/db');
-const { callGeminiImage } = require('./aiService');
+const { callImage } = require('./aiService');
 
 const uploadsDir = path.resolve(__dirname, '../../uploads');
 
@@ -48,7 +48,7 @@ async function processJob(jobId) {
       : job.prompt_snapshot;
 
     // 打印到后端终端，方便验证
-    console.log(`\n===== [AI Job ${jobId}] 发送给 Gemini 的完整 prompt =====`);
+    console.log(`\n===== [AI Job ${jobId}] 发送给 ${keyRow.provider} 的完整 prompt =====`);
     console.log(`模型: ${keyRow.model_name}  比例参数: ${ratio || '(未指定)'}`);
     console.log('---- prompt 文本 ----');
     console.log(finalPrompt);
@@ -60,9 +60,9 @@ async function processJob(jobId) {
       [finalPrompt, jobId]
     );
 
-    // 调用 AI（ratio 为空不传 aspectRatio）
-    const { base64: resultBase64, mimeType } = await callGeminiImage(
-      keyRow.model_name, keyRow.api_key, finalPrompt, base64, origMime, ratio
+    // 调用 AI（按 API Key 的服务商分发）
+    const { base64: resultBase64, mimeType } = await callImage(
+      keyRow.provider, keyRow.model_name, keyRow.api_key, finalPrompt, base64, origMime, ratio
     );
 
     // 保存结果
