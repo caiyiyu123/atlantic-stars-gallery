@@ -5,9 +5,9 @@ const config = require('../config/env');
  * 支持：gemini / openai / claude
  */
 
-const FETCH_TIMEOUT_MS = 180000; // 3 分钟（图像生成可能很慢）
-const MAX_RETRIES = 2;            // 网络错误最多重试 2 次（共 3 次尝试）
-const RETRY_DELAY_MS = 3000;      // 重试间隔 3 秒
+const DEFAULT_FETCH_TIMEOUT_MS = 600000;
+const DEFAULT_MAX_RETRIES = 0;
+const DEFAULT_RETRY_DELAY_MS = 3000;
 
 const PROXY_PROVIDER_PREFIX = {
   gemini: '/gemini/v1beta',
@@ -54,6 +54,19 @@ function ensureProviderConfig(provider) {
   }
 }
 
+function requestTiming(cfg = config) {
+  const timeoutMs = Number.isFinite(cfg.ai?.fetchTimeoutMs)
+    ? cfg.ai.fetchTimeoutMs
+    : DEFAULT_FETCH_TIMEOUT_MS;
+  const maxRetries = Number.isFinite(cfg.ai?.maxRetries)
+    ? cfg.ai.maxRetries
+    : DEFAULT_MAX_RETRIES;
+  const retryDelayMs = Number.isFinite(cfg.ai?.retryDelayMs)
+    ? cfg.ai.retryDelayMs
+    : DEFAULT_RETRY_DELAY_MS;
+  return { timeoutMs, maxRetries, retryDelayMs };
+}
+
 function describeFetchError(err) {
   const msg = err?.message || '未知错误';
   const cause = err?.cause;
@@ -82,19 +95,20 @@ async function readJsonResponse(res, upstreamName) {
 
 async function fetchWithRetry(url, options) {
   let lastErr;
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+  const { timeoutMs, maxRetries, retryDelayMs } = requestTiming();
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const opts = { ...options, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) };
+      const opts = { ...options, signal: AbortSignal.timeout(timeoutMs) };
       return await fetch(url, opts);
     } catch (err) {
       lastErr = err;
       // AbortError（超时）也归入重试
       const desc = describeFetchError(err);
-      if (attempt < MAX_RETRIES) {
-        console.warn(`[fetchWithRetry] 第 ${attempt + 1} 次失败：${desc}，${RETRY_DELAY_MS}ms 后重试...`);
-        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+      if (attempt < maxRetries) {
+        console.warn(`[fetchWithRetry] 第 ${attempt + 1} 次失败：${desc}，${retryDelayMs}ms 后重试...`);
+        await new Promise(r => setTimeout(r, retryDelayMs));
       } else {
-        console.error(`[fetchWithRetry] 全部 ${MAX_RETRIES + 1} 次都失败：${desc}`);
+        console.error(`[fetchWithRetry] 全部 ${maxRetries + 1} 次都失败：${desc}`);
       }
     }
   }
@@ -353,5 +367,6 @@ module.exports = {
   __test: {
     providerUrl,
     proxyHeaders,
+    requestTiming,
   },
 };

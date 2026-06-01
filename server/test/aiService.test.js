@@ -68,3 +68,31 @@ test('proxy mode keeps existing Cloudflare proxy paths and token header', () => 
     { 'X-Proxy-Token': 'proxy-token' }
   );
 });
+
+test('AI request timing defaults allow slow image generation without retrying timed-out work', () => {
+  assert.deepEqual(
+    __test.requestTiming({ ai: {} }),
+    {
+      timeoutMs: 600000,
+      maxRetries: 0,
+      retryDelayMs: 3000,
+    }
+  );
+});
+
+test('AI request timing can be overridden by configuration', () => {
+  assert.deepEqual(
+    __test.requestTiming({
+      ai: {
+        fetchTimeoutMs: 900000,
+        maxRetries: 1,
+        retryDelayMs: 5000,
+      },
+    }),
+    {
+      timeoutMs: 900000,
+      maxRetries: 1,
+      retryDelayMs: 5000,
+    }
+  );
+});

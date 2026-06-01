@@ -37,5 +37,8 @@ module.exports = {
     openaiBaseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
     geminiBaseUrl: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
     claudeBaseUrl: process.env.CLAUDE_BASE_URL || 'https://api.anthropic.com/v1',
+    fetchTimeoutMs: parseInt(process.env.AI_FETCH_TIMEOUT_MS || '600000', 10),
+    maxRetries: parseInt(process.env.AI_MAX_RETRIES || '0', 10),
+    retryDelayMs: parseInt(process.env.AI_RETRY_DELAY_MS || '3000', 10),
   },
 };
