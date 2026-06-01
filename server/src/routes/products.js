@@ -3,6 +3,7 @@ const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const { requireModule } = require('../middleware/permission');
 const { logOperation } = require('../middleware/operationLog');
+const { toPublicImageUrl, normalizeProductImage } = require('../utils/imageUrl');
 
 const router = express.Router();
 
@@ -60,9 +61,13 @@ router.get('/', auth, async (req, res, next) => {
 
     const dataParams = [...params, limit, offset];
     const [rows] = await pool.query(dataSql, dataParams);
+    const data = rows.map(row => ({
+      ...row,
+      cover_image: toPublicImageUrl(row.cover_image),
+    }));
 
     res.json({
-      data: rows,
+      data,
       pagination: {
         page,
         limit,
@@ -97,7 +102,7 @@ router.get('/:id', auth, async (req, res, next) => {
       [req.params.id]
     );
 
-    res.json({ ...products[0], images });
+    res.json({ ...products[0], images: images.map(normalizeProductImage) });
   } catch (err) {
     next(err);
   }

@@ -5,8 +5,8 @@ const multer = require('multer');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const { requireModule } = require('../middleware/permission');
-const config = require('../config/env');
 const { logOperation } = require('../middleware/operationLog');
+const { toPublicImageUrl } = require('../utils/imageUrl');
 
 const router = express.Router();
 const uploadsDir = path.resolve(__dirname, '../../uploads');
@@ -61,8 +61,7 @@ router.post('/upload', auth, requireModule('products'), upload.array('files', 20
     for (const file of req.files) {
       sortOrder++;
       const relativePath = `uploads/${product_id}/${file.filename}`;
-      const baseUrl = config.baseUrl || `http://localhost:${config.port}`;
-      const originalUrl = `${baseUrl}/${relativePath}`;
+      const originalUrl = toPublicImageUrl(relativePath);
       const thumbnailUrl = originalUrl;
 
       const [result] = await pool.query(
